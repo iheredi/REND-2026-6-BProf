@@ -9,25 +9,29 @@ def init_db():
         os.makedirs(db_dir)
         print(f"DB könyvtár létrehozva: {db_dir}")
 
-    # Connect to the SQLite database
+    # SQLite kapcsolódás
     try:
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
         # User tábla
+        # Töröljük ha létezik (init)
+        cursor.execute('DROP TABLE IF EXISTS user;')
         # Role értékek 'felhasználó', 'könyvtáros', or 'adminisztrátor'
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS user (
+        cursor.execute('''            
+            CREATE TABLE user (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
                 role TEXT NOT NULL,
                 email TEXT UNIQUE NOT NULL,
                 password TEXT NOT NULL,
-                phone TEXT
+                token TEXT,
+                phone TEXT,
+                address TEXT
             )
         ''')
 
-        # Userek
+        # Userek (cimet, tokent üresen hagyjuk)
         users = [
             ('Kovács János', 'felhasználó', 'janos@email.com', 'userpass1', '+36201111111'),
             ('Nagy Anna', 'felhasználó', 'anna@email.com', 'userpass2', '+36202222222'),
