@@ -65,7 +65,7 @@ def login():
     password = data.get('password')
 
     if not email or not password:
-        return jsonify({"error": "Hiányzó adatok"}), 400
+        abort(401, description="Hibajelzés! Hiányzó adatok")
 
     conn = get_db_connection()
     cursor = conn.cursor()
