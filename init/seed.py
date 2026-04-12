@@ -1,11 +1,20 @@
 #Na ezzel hozzuk létre a db-be az adatokat ha elrontod a db-t akkor is csak ezt lefuttatod és 
 #újra helyreáll a db-d állapota 
-
+import os
 from app import app, db, Role, User, Address, Book, BookItem, Loan, Debt, Reservation
 from datetime import datetime, timedelta
 
 def seed_data():
     with app.app_context():
+        db_uri = app.config['SQLALCHEMY_DATABASE_URI']
+    # 'sqlite:///...' formátumból kinyerjük a mappa útvonalát
+        db_path = db_uri.replace('sqlite:///', '')
+        db_dir = os.path.dirname(db_path)
+
+        # Ha nem létezik a mappa (backend/instance), létrehozzuk, különben hiba lesz
+        if db_dir and not os.path.exists(db_dir):
+            os.makedirs(db_dir)
+            print(f"Mappa létrehozva: {db_dir}")
         # Tisztítás az újrakezdéshez
         db.drop_all()
         db.create_all()
