@@ -1,4 +1,7 @@
-from rendszerfejlesztes_db import app, db, Role, User, Address, Book, BookItem, Loan, Debt, Reservation
+#Na ezzel hozzuk létre a db-be az adatokat ha elrontod a db-t akkor is csak ezt lefuttatod és 
+#újra helyreáll a db-d állapota 
+
+from app import app, db, Role, User, Address, Book, BookItem, Loan, Debt, Reservation
 from datetime import datetime, timedelta
 
 def seed_data():
