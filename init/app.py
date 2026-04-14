@@ -57,6 +57,8 @@ swagger = Swagger(app, template=template)
 
 
 # --- API végpontok ---
+
+#------------Felhasználó-------------
 #Login
 @app.route('/login', methods=['POST'])
 def login():
@@ -105,47 +107,6 @@ def login():
         }), 200
 
     return jsonify({"msg": "Hibás email vagy jelszó"}), 401
-
-# Könyv példány törlése
-@app.route('/book-items/<int:item_id>', methods=['DELETE'])
-@jwt_required()
-def delete_book_item(item_id):
-    """
-    Konkrét könyvpéldány törlése (Csak Admin)
-    ---
-    tags:
-      - Admin Műveletek
-    security:
-      - Bearer: []
-    parameters:
-      - name: item_id
-        in: path
-        type: integer
-        required: true
-        description: A törölni kívánt példány (BookItem) egyedi azonosítója
-    responses:
-      200:
-        description: Példány sikeresen törölve
-      403:
-        description: Nincs admin jogosultságod
-      404:
-        description: A példány nem található
-    """
-    claims = get_jwt()
-    if claims.get('role') != 'admin': # Itt adjuk meg,hogy csak admin joggal törölhetünk
-        return jsonify({"msg": "Csak adminisztrátor törölhet példányt!"}), 403
-
-    item = db.session.get(BookItem, item_id)
-    if not item: # Nyilván ha nincs benne a db-ben akkor nem tudod törölni
-        return jsonify({"msg": "Ez a példány nem létezik az adatbázisban."}), 404
-
-    if item.status == 'borrowed': # És nyilván kölcsönzött példányt se tudsz törölni 
-        return jsonify({"msg": "A példány nem törölhető, mert jelenleg kölcsönzés alatt áll!"}), 400
-
-    db.session.delete(item)
-    db.session.commit()
-    
-    return jsonify({"msg": f"A(z) {item.barcode} vonalkódú példány sikeresen eltávolítva."}), 200
 
 #Új felhasz regisztálása 
 @app.route('/register', methods=['POST'])
@@ -368,6 +329,95 @@ def update_profile():
                 
     db.session.commit()
     return jsonify({"msg": "Profil adatok sikeresen frissítve"}), 200
+
+#Kölcsönzési idő hosszabbítás:
+@app.route('/extend-loan/<int:loan_id>', methods=['POST'])
+@jwt_required()
+def extend_loan(loan_id):
+    """
+    Kölcsönzési idő meghosszabbítása (max 2 alkalommal).
+    ---
+    tags:
+      - Felhasználói műveletek
+    security:
+      - Bearer: []
+    parameters:
+      - name: loan_id
+        in: path
+        type: integer
+        required: true
+    responses:
+      200:
+        description: Sikeres hosszabbítás
+      400:
+        description: Hiba (pl. már kétszer hosszabbított)
+      404:
+        description: Kölcsönzés nem található
+    """
+    current_user_id = get_jwt_identity()
+    
+    # Kikeressük az aktív kölcsönzést, ami ehhez a felhasználóhoz tartozik
+    loan = Loan.query.filter_by(id=loan_id, user_id=current_user_id, is_active=True).first()
+    
+    if not loan:
+        return jsonify({"msg": "Aktív kölcsönzés nem található ezen az azonosítón!"}), 404
+        
+    if loan.extension_count >= 2:
+        return jsonify({"msg": "Ezt a könyvet már 2 alkalommal meghosszabbítottad, több lehetőség nincs."}), 400
+        
+    loan.extension_count += 1
+    loan.due_date = loan.due_date + timedelta(days=14)
+    
+    db.session.commit()
+    return jsonify({
+        "msg": "Sikeres hosszabbítás!",
+        "uj_hatarido": loan.due_date.strftime('%Y-%m-%d %H:%M'),
+        "hosszabbitasok_szama": loan.extension_count
+    }), 200
+
+
+#------------Admin-------------
+# Könyv példány törlése
+@app.route('/book-items/<int:item_id>', methods=['DELETE'])
+@jwt_required()
+def delete_book_item(item_id):
+    """
+    Konkrét könyvpéldány törlése (Csak Admin)
+    ---
+    tags:
+      - Admin Műveletek
+    security:
+      - Bearer: []
+    parameters:
+      - name: item_id
+        in: path
+        type: integer
+        required: true
+        description: A törölni kívánt példány (BookItem) egyedi azonosítója
+    responses:
+      200:
+        description: Példány sikeresen törölve
+      403:
+        description: Nincs admin jogosultságod
+      404:
+        description: A példány nem található
+    """
+    claims = get_jwt()
+    if claims.get('role') != 'admin': # Itt adjuk meg,hogy csak admin joggal törölhetünk
+        return jsonify({"msg": "Csak adminisztrátor törölhet példányt!"}), 403
+
+    item = db.session.get(BookItem, item_id)
+    if not item: # Nyilván ha nincs benne a db-ben akkor nem tudod törölni
+        return jsonify({"msg": "Ez a példány nem létezik az adatbázisban."}), 404
+
+    if item.status == 'borrowed': # És nyilván kölcsönzött példányt se tudsz törölni 
+        return jsonify({"msg": "A példány nem törölhető, mert jelenleg kölcsönzés alatt áll!"}), 400
+
+    db.session.delete(item)
+    db.session.commit()
+    
+    return jsonify({"msg": f"A(z) {item.barcode} vonalkódú példány sikeresen eltávolítva."}), 200
+
 
 if __name__ == '__main__':
     app.run(debug=True)
