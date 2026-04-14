@@ -308,5 +308,48 @@ def create_reservation():
         "msg": f"Sikeresen előjegyezted a(z) '{book.title}' című könyvet!",
         "reservation_id": new_res.id
     }), 201
+
+#felhasználó adat módosítás
+@app.route('/update-profile', methods=['PUT'])
+@jwt_required()
+def update_profile():
+    """
+    Személyes adatok (lakcím, telefonszám) módosítása.
+    ---
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            address:
+              type: string
+              example: "1111 Budapest, Példa utca 1."
+            phone:
+              type: string
+              example: "+36301234567"
+    responses:
+      200:
+        description: Sikeres módosítás
+      404:
+        description: Felhasználó nem található
+    """
+    current_user_id = get_jwt_identity()
+    user = User.query.get(current_user_id)
+    
+    if not user:
+        return jsonify({"msg": "Felhasználó nem található"}), 404
+        
+    data = request.get_json()
+    
+    if 'address' in data:
+        user.address = data['address']
+    if 'phone' in data:
+        user.phone = data['phone']
+        
+    db.session.commit()
+    return jsonify({"msg": "Profil adatok sikeresen frissítve"}), 200
+
 if __name__ == '__main__':
     app.run(debug=True)
