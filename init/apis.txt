@@ -1,0 +1,22 @@
+Felhasználó:
+-Regisztráció - kész
+-Bejelentkezés - kész
+-Személyes adat módosítás - kész
+-Könyv előjegyzés - kész
+-Kölcsönzési idő hosszabbítás - 
+-Kölcsönözhető könyvek listázása -
+-Saját kölcsönzések megtekintése -
+
+Könyvtáros:
+-Könyvkiadás -
+-Könyvvisszavétel -
+-Bírság kiszabás -
+-Felhasználók kölcsönzéseinek listázása -
+
+Admin:
+-Könyv törlése a rendszerből - kész
+-Teljesen új könyv felvétele - 
+-Meglévő könyv adatainak szerkesztése - 
+-Új példányok hozzáadása (pl +2 Egri csillagok) -
+-Könyv fizikai állapot módosítása- 
+
