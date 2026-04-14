@@ -309,13 +309,17 @@ def create_reservation():
         "reservation_id": new_res.id
     }), 201
 
-#felhasználó adat módosítás
+#felhasználó személyes adat módosítása
 @app.route('/update-profile', methods=['PUT'])
 @jwt_required()
 def update_profile():
     """
     Személyes adatok (lakcím, telefonszám) módosítása.
     ---
+    tags:
+      - Felhasználói műveletek
+    security:
+      - Bearer: []
     parameters:
       - name: body
         in: body
@@ -323,12 +327,18 @@ def update_profile():
         schema:
           type: object
           properties:
-            address:
-              type: string
-              example: "1111 Budapest, Példa utca 1."
             phone:
               type: string
               example: "+36301234567"
+            city:
+              type: string
+              example: "Budapest"
+            street:
+              type: string
+              example: "Példa utca 1."
+            zip_code:
+              type: string
+              example: "1111"
     responses:
       200:
         description: Sikeres módosítás
@@ -336,18 +346,26 @@ def update_profile():
         description: Felhasználó nem található
     """
     current_user_id = get_jwt_identity()
-    user = User.query.get(current_user_id)
+    user = db.session.get(User, current_user_id)
     
     if not user:
         return jsonify({"msg": "Felhasználó nem található"}), 404
         
     data = request.get_json()
     
-    if 'address' in data:
-        user.address = data['address']
     if 'phone' in data:
         user.phone = data['phone']
         
+    if any(k in data for k in ('city', 'street', 'zip_code')):
+        address = db.session.get(Address, user.address_id)
+        if address:
+            if 'city' in data:
+                address.city = data['city']
+            if 'street' in data:
+                address.street = data['street']
+            if 'zip_code' in data:
+                address.zip_code = data['zip_code']
+                
     db.session.commit()
     return jsonify({"msg": "Profil adatok sikeresen frissítve"}), 200
 
