@@ -3,7 +3,7 @@ Felhasználó:
 -Bejelentkezés - kész
 -Személyes adat módosítás - kész
 -Könyv előjegyzés - kész
--Kölcsönzési idő hosszabbítás - 
+-Kölcsönzési idő hosszabbítás - kész
 -Kölcsönözhető könyvek listázása -
 -Saját kölcsönzések megtekintése -
 -Bíráság kifizetése-
