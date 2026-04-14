@@ -6,6 +6,8 @@ Felhasználó:
 -Kölcsönzési idő hosszabbítás - 
 -Kölcsönözhető könyvek listázása -
 -Saját kölcsönzések megtekintése -
+-Bíráság kifizetése-
+-Pénz feltöltése számlára-
 
 Könyvtáros:
 -Könyvkiadás -
