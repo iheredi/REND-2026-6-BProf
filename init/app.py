@@ -7,11 +7,14 @@ from flask import Flask, request, jsonify
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt, get_jwt_identity
 from flasgger import Swagger
 from datetime import timedelta
+from flask_cors import CORS
 
 # Itt importáljuk a saját modelleinket
 from models import db, User, Role, Address, Book, BookItem, Reservation, Loan, Debt
 
 app = Flask(__name__)
+#CORS engedélyezés a frontend számára -> Access-Control-Allow-Origin: *
+CORS(app)
 
 # --- KONFIGURÁCIÓ ---
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -60,9 +63,18 @@ swagger = Swagger(app, template=template)
 # teszt, hogy működik-e egyáltalán az api (fronted check)
 @app.route('/ping')
 def ping():
-  return jsonify(
-    {"msg": "success"}
-  ), 200
+    """
+    API teszt
+    ---
+    tags:
+      - Teszt
+    responses:
+      200:
+        description: API működik
+        examples:
+          application/json: {"msg": "success"}
+    """
+    return jsonify({"msg": "success"}), 200
 
 #------------Felhasználó-------------
 #Login
