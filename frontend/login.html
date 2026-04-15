@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Login</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="app.css" rel="stylesheet">
+
+    <script src="app.js" defer></script>
+</head>
+
+<body class="container mt-5">
+
+    <h2>Login</h2>
+
+    <form id="loginForm">
+        <input class="form-control mb-2" id="email" placeholder="email">
+        <input class="form-control mb-2" id="password" type="password" placeholder="password">
+
+        <button class="btn btn-primary">Login</button>
+    </form>
+
+    <div id="error" class="text-danger mt-3"></div>
+
+    <script>
+        document.getElementById("loginForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+
+            const errorDiv = document.getElementById("error");
+
+            errorDiv.textContent = ""; // reset
+
+            try {
+                const res = await fetch("http://127.0.0.1:5000/login", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Accept": "application/json"
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await res.json();
+
+                console.log("STATUS:", res.status);
+                console.log("RESPONSE:", data);
+
+                // backend error case
+                if (!res.ok) {
+                    errorDiv.textContent = "Hiba: " + JSON.stringify(data);
+                    return;
+                }
+
+                // no token case
+                if (!data.access_token) {
+                    errorDiv.textContent = "Sikerült a kérés, de nincs token: " + JSON.stringify(data);
+                    return;
+                }
+
+                // success UI
+                errorDiv.style.color = "green";
+                errorDiv.textContent =
+                    "Sikeres login!" + JSON.stringify(data);
+
+                // store (ha akarod később használni)
+                localStorage.setItem("token", data.access_token);
+
+
+            } catch (err) {
+                errorDiv.style.color = "red";
+                errorDiv.textContent = "Network hiba: " + err.message;
+            }
+        });
+    </script>
+    <button class="btn btn-success mt-3" onclick="goIndex()" type="button">
+        Go to Index
+    </button>
+</body>
+
+</html>
