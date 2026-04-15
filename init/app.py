@@ -57,6 +57,12 @@ swagger = Swagger(app, template=template)
 
 
 # --- API végpontok ---
+# teszt, hogy működik-e egyáltalán az api (fronted check)
+@app.route('/ping')
+def ping():
+  return jsonify(
+    {"msg": "success"}
+  ), 200
 
 #------------Felhasználó-------------
 #Login
