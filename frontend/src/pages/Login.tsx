@@ -32,7 +32,7 @@ export default function Login() {
 
             // 5. redirect
             navigate(ROUTES.home);
-        } catch (err) {
+        } catch (err: any) {
             console.log("LOGIN ERROR RAW:", err);
             console.log("RESPONSE:", err.response);
 

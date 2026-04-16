@@ -1,10 +1,25 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { getToken, logout as clearAuth } from "../api/auth";
 import http from "../api/_http_client";
 
-const AuthContext = createContext();
+interface User {
+  id: string;
+  email: string;
+  name?: string; // opcionális
+}
 
-export function AuthProvider({ children }) {
+interface AuthContextType {
+  user: User | null;
+  setUser: (user: User | null) => void;
+  loading: boolean;
+  logout: () => void;
+  isLoggedIn: boolean;
+}
+
+const AuthContext = createContext<AuthContextType|undefined>(undefined);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
@@ -52,4 +67,8 @@ export function AuthProvider({ children }) {
     );
 }
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = (): AuthContextType => {
+  const context = useContext(AuthContext);
+  if (!context) throw new Error("useAuth must be used within AuthProvider");
+  return context;
+};

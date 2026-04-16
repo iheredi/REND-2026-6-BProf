@@ -22,3 +22,8 @@ $ mount |grep home
 /dev/mapper/cmvg-home on /home type ext4 (rw,relatime)
 /dev/mapper/cmvg-devel on /home/istvan/dev type ext4 (rw,nosuid,nodev,noexec,relatime,x-gvfs-hide)
 
+
+-----
+
+node futtatas fejleszteshez:
+npm run dev
