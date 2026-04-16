@@ -76,6 +76,42 @@ def ping():
     """
     return jsonify({"msg": "success"}), 200
 
+# ki az authentikalt user - ha van (backend check)
+@app.route('/me')
+@jwt_required()
+def me():
+    """
+    Authentikált felhasználó teszt, adatlekérés
+    ---
+    tags:
+      - Teszt
+    parameters:
+      - name: Authorization
+        in: header
+        type: string
+        required: true
+        description: "JWT token Bearer formátumban (pl: Bearer eyJ...)"
+    responses:
+      200:
+        description: Felhasználó authentikált, json adatokat ad vissza
+      401:
+        description: Felhasználó nem authentikált
+    """
+    
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    role = user.role_data.name
+        
+    return jsonify({
+        "msg": "success",
+        "id": user.id,
+        "email": user.email,
+        "role": role
+    }), 200
+
+
+
+
 #------------Felhasználó-------------
 #Login
 @app.route('/login', methods=['POST'])
