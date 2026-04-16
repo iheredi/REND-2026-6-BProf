@@ -1,3 +1,58 @@
+# React + TypeScript + Vite frontend for Bibliotar
+
+## 1) Node Version Manager
+```js
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+```
+
+## 2) Node telepítése NVM-mel
+```js
+nvm install --lts
+nvm use --lts
+```
+
+Now using node v24.15.0 (npm v11.12.1)
+istvan@cm:~$ node -v
+v24.15.0
+istvan@cm:~$ npm -v
+11.12.1
+
+## 3) React app install
+npm create vite@latest
+ - add name
+ - select framework -> React
+ - select Typescript
+
+!!!! a mount nem lehet noexec (ennyit a security-rol)
+$ mount |grep home
+/dev/mapper/cmvg-home on /home type ext4 (rw,relatime)
+/dev/mapper/cmvg-devel on /home/istvan/dev type ext4 (rw,nosuid,nodev,noexec,relatime,x-gvfs-hide)
+
+
+-----
+
+## node futtatas fejleszteshez:
+```js
+npm run dev
+```
+
+## build:
+```js
+npm run build
+```
+
+---- 
+## built index.html futtatas (CORS miatt kell local http server)
+```js
+cd frontend/dist
+python -m http.server  # ez elindit egy http servert a 8000-es porton
+```
+bongeszoben megnyitni http://127.0.0.1:8000
+
+
+## 
+
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
