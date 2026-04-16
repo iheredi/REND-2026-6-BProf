@@ -1,7 +1,12 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import type { ReactNode } from "react";
 
-export default function Protected({ children }) {
+interface ProtectedProps {
+  children: ReactNode;
+}
+
+export default function Protected({ children }: ProtectedProps) {
   const { user, loading } = useAuth();
 
   // amíg validáljuk a /me-t

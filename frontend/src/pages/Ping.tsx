@@ -14,7 +14,7 @@ export default function Ping() {
             const res = await ping();
 
             setMsg(res.data.msg);
-            setStatus(res.status);
+            setStatus(res.status.toString());
             setHeaders(res.headers);
             console.log(res);
         } catch (err) {

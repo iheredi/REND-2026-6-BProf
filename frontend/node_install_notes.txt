@@ -27,3 +27,13 @@ $ mount |grep home
 
 node futtatas fejleszteshez:
 npm run dev
+
+build:
+npm run build
+
+
+---- 
+built index.html futtatas (CORS miatt kell local http server)
+cd frontend/dist
+python -m http.server  # ez elindit egy http servert a 8000-es porton
+bongeszobe megnyitni http://127.0.0.1
