@@ -1,10 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { login, saveAuth, logout } from "../api/auth";
-import http from "../api/_http_client";
+import { login, saveAuth, me } from "../api/auth";
 import { useAuth } from "../context/AuthContext";
 import { ROUTES } from "../routes";
-import { consumeFlash, setFlash } from "../utils/flash";
 
 import Header from "../components/Header";
 import Footer from "../components/Footer";
@@ -14,12 +12,7 @@ export default function Login() {
     const { setUser } = useAuth();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
-    const [flash, setFlashState] = useState("");
-
-    useEffect(() => {
-        const msg = consumeFlash();
-        if (msg) setFlashState(msg);
-    }, []);
+    const [error, setError] = useState("");
 
     const handleLogin = async () => {
         try {
@@ -30,7 +23,7 @@ export default function Login() {
             saveAuth(res.data);
 
             // 3. user lekérés (VALIDÁCIÓ)
-            const meRes = await http.get("/me");
+            const meRes = await me();
 
             // 4. globális state frissítés
             setUser(meRes.data);
@@ -43,10 +36,9 @@ export default function Login() {
             console.log("LOGIN ERROR RAW:", err);
             console.log("RESPONSE:", err.response);
 
-            const msg = err.response?.data?.msg || "Hiba történt";
-
-            setFlash(msg);
-            setFlashState(msg);
+            const error = err.response?.data?.msg || "Hiba történt";
+            console.log(error);
+            setError(error);
         }
     };
 
@@ -59,9 +51,9 @@ export default function Login() {
 
                         <h3 className="mb-4 text-center">Login</h3>
 
-                        {flash && (
-                            <div className="alert alert-danger">
-                                {flash}
+                        {error && (
+                            <div className="alert alert-danger mt-3">
+                                {error}
                             </div>
                         )}
 
