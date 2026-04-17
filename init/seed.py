@@ -1,6 +1,8 @@
 #Na ezzel hozzuk létre a db-be az adatokat ha elrontod a db-t akkor is csak ezt lefuttatod és 
 #újra helyreáll a db-d állapota 
 import os
+import sys 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
 from app import app, db, Role, User, Address, Book, BookItem, Loan, Debt, Reservation
 from datetime import datetime, timedelta
 

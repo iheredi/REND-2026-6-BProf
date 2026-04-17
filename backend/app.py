@@ -16,9 +16,18 @@ app = Flask(__name__)
 #CORS engedélyezés a frontend számára -> Access-Control-Allow-Origin: *
 CORS(app)
 
-# --- KONFIGURÁCIÓ ---
+# --- ELÉRÉSI UTAK BEÁLLÍTÁSA ---
 basedir = os.path.abspath(os.path.dirname(__file__))
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'instance', 'bibliotar.db')
+project_root = os.path.abspath(os.path.join(basedir, ".."))
+
+# Az db pontos helye:
+db_path = os.path.join(project_root, 'db', 'bibliotar.db')
+
+if not os.path.exists(os.path.dirname(db_path)):
+    os.makedirs(os.path.dirname(db_path))
+
+# --- KONFIGURÁCIÓ ---
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['JWT_SECRET_KEY'] = 'hihetetlenul_titkos_aron_istvan_gergo_peter_jelszo'
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)
@@ -177,12 +186,16 @@ def register():
         schema:
           id: RegisterInput
           required:
+            - name
             - email
             - password
             - city
             - street
             - zip_code
           properties:
+            name:
+              type: string
+              example: "Arthas Menethil"
             email:
               type: string
               example: "olvaso@pelda.hu"
