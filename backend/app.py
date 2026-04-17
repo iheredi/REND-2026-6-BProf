@@ -425,13 +425,33 @@ def extend_loan(loan_id):
     """
     current_user_id = get_jwt_identity()
     
+
+    
+    
+    user = db.session.get(User, current_user_id) # Modern lekérdezés a figyelmeztetés ellen
+    if not user:
+        return jsonify({"msg": "Felhasználó nem található!"}), 404
+
+    # user.role.name helyett lekérdezzük a Role-t az ID alapján
+    role = db.session.get(Role, user.role_id)
+    is_staff = role.name in ['librarian', 'admin'] if role else False
+    
+    if is_staff:
+        loan = Loan.query.filter_by(id=loan_id, is_active=True).first()
+    else:
+        loan = Loan.query.filter_by(id=loan_id, user_id=current_user_id, is_active=True).first()   
+
+    
     # Kikeressük az aktív kölcsönzést, ami ehhez a felhasználóhoz tartozik
-    loan = Loan.query.filter_by(id=loan_id, user_id=current_user_id, is_active=True).first()
+    if is_staff:
+        loan = Loan.query.filter_by(id=loan_id, is_active=True).first()
+    else:    
+      loan = Loan.query.filter_by(id=loan_id, user_id=current_user_id, is_active=True).first()
     
     if not loan:
         return jsonify({"msg": "Aktív kölcsönzés nem található ezen az azonosítón!"}), 404
         
-    if loan.extension_count >= 2:
+    if not is_staff and loan.extension_count >= 2:
         return jsonify({"msg": "Ezt a könyvet már 2 alkalommal meghosszabbítottad, több lehetőség nincs."}), 400
         
     loan.extension_count += 1
