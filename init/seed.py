@@ -33,20 +33,27 @@ def seed_data():
         db.session.commit()
 
         # 3. FELHASZNÁLÓK (Regisztrált felhasználók, könyvtárosok, adminok)
-        u_admin = User(email="admin@bibliotar.hu", phone="061111111", role_id=admin_r.id, address_id=addr1.id)
+        u_admin = User(email="admin@bibliotar.hu",name="Főnök András", phone="061111111", role_id=admin_r.id, address_id=addr1.id)
         u_admin.set_password("admin123")
 
-        u_lib = User(email="konyvtaros@bibliotar.hu", phone="062222222", role_id=lib_r.id, address_id=addr2.id)
+        u_lib = User(email="konyvtaros@bibliotar.hu",name="Példa Géza", phone="062222222", role_id=lib_r.id, address_id=addr2.id)
         u_lib.set_password("jelszo123")
 
-        u_olvaso1 = User(email="kiss.pista@freemail.hu", phone="06305554433", role_id=user_r.id, address_id=addr1.id, balance=1200.0)
+        u_olvaso1 = User(email="kiss.pista@freemail.hu",name="Kiss Pista", phone="06305554433", role_id=user_r.id, address_id=addr1.id, balance=1200.0)
         u_olvaso1.set_password("jelszo123")
 
-        u_olvaso2 = User(email="nagy.eva@gmail.com", phone="06708889900", role_id=user_r.id, address_id=addr2.id, balance=0.0)
+        u_olvaso2 = User(email="nagy.eva@gmail.com",name="Nagy Éva", phone="06708889900", role_id=user_r.id, address_id=addr2.id, balance=0.0)
         u_olvaso2.set_password("jelszo123")
 
-        u_olvaso3 = User(email="teszt.elek@citromail.hu", phone="06201112233", role_id=user_r.id, address_id=addr1.id, balance=5500.0)
+        u_olvaso3 = User(email="teszt.elek@citromail.hu",name="Teszt Elek", phone="06201112233", role_id=user_r.id, address_id=addr1.id, balance=5500.0)
         u_olvaso3.set_password("jelszo123")
+
+        u_olvaso4 = User(email="pelda.geza@gmail.com",name="Példa Géza", phone="06203349406", role_id=user_r.id, address_id=addr2.id, balance=0.0)
+        u_olvaso4.set_password("jelszo123")
+
+        u_olvaso5 = User(email="semmikozodhozza@gmail.com",name="Savanyú Zsuzsanna Éva", phone="06708459230", role_id=user_r.id, address_id=addr2.id, balance=0.0)
+        u_olvaso5.set_password("jelszo123")
+
         db.session.add_all([u_admin, u_lib, u_olvaso1, u_olvaso2, u_olvaso3])
         db.session.commit()
 

@@ -211,6 +211,7 @@ def register():
     
     # Adatok kinyerése
     email = data.get('email')
+    name = data.get('name')  
     password = data.get('password')
     phone = data.get('phone')
     city = data.get('city')
@@ -218,8 +219,8 @@ def register():
     zip_code = data.get('zip_code')
 
     # Alapvető ellenőrzés ha létezik az email akkor kuka
-    if not email or not password or not city or not street or not zip_code:
-        return jsonify({"msg": "Minden adat kitöltése kötelező (email, jelszó, lakcím)!"}), 400
+    if not email or not name or not password or not city or not street or not zip_code:
+        return jsonify({"msg": "Minden adat kitöltése kötelező (email, név jelszó, lakcím)!"}), 400
 
     if User.query.filter_by(email=email).first():
         return jsonify({"msg": "Ez az email cím már foglalt!"}), 400
@@ -241,6 +242,7 @@ def register():
         # 3. LÉPÉS: Felhasználó létrehozása az új address_id-val
         new_user = User(
             email=email,
+            name=name,
             phone=phone,
             role_id=role_id,
             address_id=new_address.id, 
