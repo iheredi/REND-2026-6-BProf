@@ -398,7 +398,7 @@ def update_profile():
                 
     db.session.commit()
     return jsonify({"msg": "Profil adatok sikeresen frissítve"}), 200
-
+#Ez különleges mert ADMIN és KÖNYVTÁROS is csinálhatja
 #Kölcsönzési idő hosszabbítás:
 @app.route('/extend-loan/<int:loan_id>', methods=['POST'])
 @jwt_required()
@@ -428,11 +428,11 @@ def extend_loan(loan_id):
 
     
     
-    user = db.session.get(User, current_user_id) # Modern lekérdezés a figyelmeztetés ellen
+    user = db.session.get(User, current_user_id)
     if not user:
         return jsonify({"msg": "Felhasználó nem található!"}), 404
 
-    # user.role.name helyett lekérdezzük a Role-t az ID alapján
+    #Megnézzük, hogy milyen role-ba van ha admin vagy könyvtáros akkor többször is hosszabbíthat
     role = db.session.get(Role, user.role_id)
     is_staff = role.name in ['librarian', 'admin'] if role else False
     
@@ -463,7 +463,128 @@ def extend_loan(loan_id):
         "uj_hatarido": loan.due_date.strftime('%Y-%m-%d %H:%M'),
         "hosszabbitasok_szama": loan.extension_count
     }), 200
+#-Pénz feltöltése számlára-
+@app.route('/add-balance', methods=['POST'])
+@jwt_required()
+def add_balance():
+    """
+    Egyenleg feltöltése a bejelentkezett felhasználó számára.
+    ---
+    tags:
+      - Pénzügyek
+    security:
+      - Bearer: []
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            amount:
+              type: number
+              example: 5000
+    responses:
+      200:
+        description: Sikeres feltöltés
+      400:
+        description: Érvénytelen összeg
+    """
+    current_user_id = get_jwt_identity()
+    user = db.session.get(User, current_user_id)
+    
+    if not user:
+        return jsonify({"msg": "Felhasználó nem található!"}), 404
 
+    # Adatok kinyerése a kérésből
+    data = request.get_json()
+    amount = data.get('amount')
+
+    # Ellenőrizzük, hogy az összeg érvényes szám-e és pozitív
+    if amount is None or not isinstance(amount, (int, float)) or amount <= 0:
+        return jsonify({"msg": "Kérlek, adj meg egy érvényes pozitív összeget!"}), 400
+
+    # Egyenleg frissítése (alapértelmezett értéket is kezelve)
+    if user.balance is None:
+        user.balance = 0.0
+        
+    user.balance += float(amount)
+    
+    db.session.commit()
+
+    return jsonify({
+        "msg": "Sikeres feltöltés!",
+        "uj_egyenleg": user.balance,
+        "hozzaadott_osszeg": amount
+    }), 200
+
+@app.route('/pay-debt/<int:debt_id>', methods=['POST'])
+@jwt_required()
+def pay_debt(debt_id):
+    """
+    Tartozás kifizetése az egyenlegből
+    ---
+    tags:
+      - Pénzügyek
+    security:
+      - Bearer: []
+    parameters:
+      - name: debt_id
+        in: path
+        type: integer
+        required: true
+        description: A tartozás egyedi azonosítója
+    responses:
+      200:
+        description: Sikeres fizetés
+    """
+
+    
+    current_user_id = get_jwt_identity()
+
+    current_user_id = get_jwt_identity()
+    debt = db.session.get(Debt, debt_id)
+
+    print(f"--- DEBUG INFO ---")
+    print(f"Bejelentkezett User ID (tokenből): {current_user_id}")
+    print(f"Tartozás ID-ja amit fizetnél: {debt_id}")
+    if debt:
+        print(f"Tartozás gazdájának User ID-ja: {debt.user_id}")
+    print(f"------------------")
+    user = db.session.get(User, current_user_id)
+    
+    # Tartozás megkeresése
+    #debt = db.session.get(Debt, debt_id)
+    
+    if not debt:
+        return jsonify({"msg": "A megadott tartozás nem létezik!"}), 404
+        
+    # Jogosultság megnézése
+    if int(debt.user_id) != int(current_user_id):
+      return jsonify({"msg": "Nincs jogosultságod más tartozását kifizetni!"}), 403
+    
+    # Fizetve van?
+    if debt.is_paid:
+        return jsonify({"msg": "Ez a tartozás már rendezve van."}), 400
+
+    # Van pízed?
+    if user.balance < debt.amount:
+        return jsonify({
+            "msg": "Nincs elegendő fedezet!",
+            "hianyzik": debt.amount - user.balance
+        }), 400
+
+    # 5. Levonás és státusz frissítés
+    user.balance -= debt.amount
+    debt.is_paid = True
+    
+    db.session.commit()
+
+    return jsonify({
+        "msg": "Tartozás sikeresen rendezve!",
+        "osszeg": debt.amount,
+        "maradek_egyenleg": user.balance
+    }), 200
 
 #------------Admin-------------
 # Könyv példány törlése

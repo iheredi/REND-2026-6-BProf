@@ -56,7 +56,7 @@ def seed_data():
         u_olvaso5 = User(email="semmikozodhozza@gmail.com",name="Savanyú Zsuzsanna Éva", phone="06708459230", role_id=user_r.id, address_id=addr2.id, balance=0.0)
         u_olvaso5.set_password("jelszo123")
 
-        db.session.add_all([u_admin, u_lib, u_olvaso1, u_olvaso2, u_olvaso3])
+        db.session.add_all([u_admin, u_lib, u_olvaso1, u_olvaso2, u_olvaso3,u_olvaso4,u_olvaso5])
         db.session.commit()
 
         # 4. KÖNYVEK (Katalógus adatok és kölcsönözhetőség beállítása)
