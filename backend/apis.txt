@@ -17,8 +17,8 @@ Könyvtáros:
 
 Admin:
 -Könyv törlése a rendszerből - kész
--Teljesen új könyv felvétele - 
+-Teljesen új könyv felvétele - kész
 -Meglévő könyv adatainak szerkesztése - 
--Új példányok hozzáadása (pl +2 Egri csillagok) -
+-Új példányok hozzáadása (pl +2 Egri csillagok) - kész
 -Könyv fizikai állapot módosítása- 
 
