@@ -6,7 +6,7 @@ import os
 from flask import Flask, request, jsonify
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt, get_jwt_identity
 from flasgger import Swagger
-from datetime import timedelta
+from datetime import datetime, timedelta
 from flask_cors import CORS
 
 # Itt importáljuk a saját modelleinket
@@ -338,6 +338,76 @@ def create_reservation():
         "msg": f"Sikeresen előjegyezted a(z) '{book.title}' című könyvet!",
         "reservation_id": new_res.id
     }), 201
+#Kölcsönzési igény
+@app.route('/request-loan', methods=['POST'])
+@jwt_required()
+def request_loan():
+    """
+    Kölcsönzési igény indítása egy konkrét példányra (Pending állapot).
+    ---
+    tags:
+      - Kölcsönzés
+    security:
+      - Bearer: []
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            book_item_id:
+              type: integer
+              example: 10
+              description: A konkrét könyvpéldány azonosítója (BookItem.id)
+    responses:
+      201:
+        description: Igény sikeresen rögzítve (Pending)
+      400:
+        description: A példány nem elérhető vagy már foglalt
+      404:
+        description: A példány nem található
+    """
+    data = request.get_json()
+    item_id = data.get('book_item_id') 
+    user_id = get_jwt_identity()
+
+    # 1. Példány ellenőrzése
+    item = db.session.get(BookItem, item_id)
+    if not item:
+        return jsonify({"msg": "A példány nem található!"}), 404
+    
+    if item.status != 'available':
+        return jsonify({"msg": "Ez a példány jelenleg nem kölcsönözhető!"}), 400
+
+    # 2. Van-e már kérés erre?
+    existing_loan = Loan.query.filter_by(
+        user_id=user_id, 
+        book_item_id=item_id, 
+        is_active=False
+    ).first()
+    
+    if existing_loan:
+        return jsonify({"msg": "Már elküldtél egy igényt erre a példányra!"}), 400
+
+    # 3. Kölcsönzési igény létrehozása (is_active=False = PENDING)
+    new_loan = Loan(
+        user_id=user_id,
+        book_item_id=item_id,
+        is_active=False,
+        extension_count=0
+    )
+
+    # 4. A példányt "reserved" állapotba tesszük, hogy más ne lássa elérhetőnek
+    item.status = 'reserved'
+
+    db.session.add(new_loan)
+    db.session.commit()
+
+    return jsonify({
+        "msg": "Igény rögzítve! Keresd fel a könyvtárost a jóváhagyáshoz.",
+        "loan_id": new_loan.id
+    }), 201
 
 #felhasználó személyes adat módosítása
 @app.route('/update-profile', methods=['PUT'])
@@ -517,7 +587,7 @@ def add_balance():
         "uj_egyenleg": user.balance,
         "hozzaadott_osszeg": amount
     }), 200
-
+#Tartozás kifizetése
 @app.route('/pay-debt/<int:debt_id>', methods=['POST'])
 @jwt_required()
 def pay_debt(debt_id):
@@ -786,6 +856,121 @@ def add_book_items():
         "msg": f"{count} példány sikeresen hozzáadva!",
         "barcodes": created_items
     }), 201
+
+#----- KÖNYVTÁROS ------
+@app.route('/approve-loan/<int:loan_id>', methods=['POST'])
+@jwt_required()
+def approve_loan(loan_id):
+    """
+    Kölcsönzési igény jóváhagyása és aktiválása (Csak könyvtáros/admin).
+    ---
+    tags:
+      - Kölcsönzés
+    security:
+      - Bearer: []
+    parameters:
+      - name: loan_id
+        in: path
+        type: integer
+        required: true
+        description: A jóváhagyandó kölcsönzés (Loan) azonosítója
+    responses:
+      200:
+        description: Kölcsönzés sikeresen aktiválva
+      403:
+        description: Nincs jogosultságod a művelethez
+      404:
+        description: A kölcsönzési igény nem található vagy már aktív
+    """
+    current_user_id = get_jwt_identity()
+    
+    # Jogosultság ellenőrzése
+    staff = db.session.get(User, current_user_id)
+    if not staff or not staff.role_data or staff.role_data.name not in ['librarian', 'admin']:
+        return jsonify({"msg": "Ehhez a művelethez könyvtárosi jogosultság szükséges!"}), 403
+
+    # A kölcsönzési igény (Loan) kikeresése
+    loan = db.session.get(Loan, loan_id)
+    
+    # Csak akkor aktiválhatjuk, ha létezik és még NEM aktív (is_active=False)
+    if not loan or loan.is_active:
+        return jsonify({"msg": "Nem található jóváhagyásra váró igény ezen az azonosítón!"}), 404
+
+    #  AKTIVÁLÁS 
+    loan.is_active = True
+    loan.loan_date = datetime.utcnow() # A kölcsönzés most indul
+    loan.due_date = datetime.utcnow() + timedelta(days=14) # 2 hét határidő
+    
+    # A könyv példányának státuszát 'borrowed' lesz
+    item = db.session.get(BookItem, loan.book_item_id)
+    if item:
+        item.status = 'borrowed'
+
+    db.session.commit()
+
+    return jsonify({
+        "msg": "Kölcsönzés sikeresen jóváhagyva!",
+        "loan_id": loan.id,
+        "uj_hatarido": loan.due_date.strftime('%Y-%m-%d %H:%M'),
+        "konyv_peldany": item.barcode if item else "Ismeretlen"
+    }), 200
+# Várakozó könyv kölcsönzési igények
+@app.route('/pending-loans', methods=['GET'])
+@jwt_required()
+def get_pending_loans():
+    """
+    Várakozó (Pending) kölcsönzési igények listázása könyvtárosoknak.
+    ---
+    tags:
+      - Kölcsönzés
+    security:
+      - Bearer: []
+    responses:
+      200:
+        description: A várakozó igények listája
+      403:
+        description: Nincs jogosultság (csak könyvtáros/admin)
+    """
+    current_user_id = get_jwt_identity()
+    staff = db.session.get(User, current_user_id)
+    
+    # Jogosultság ellenőrzése
+    if not staff or not staff.role_data or staff.role_data.name not in ['librarian', 'admin']:
+        return jsonify({"msg": "Ehhez a művelethez könyvtárosi jogosultság szükséges!"}), 403
+
+    # Csak azok kellenek amik nem aktívak 
+    pending_loans = Loan.query.filter_by(is_active=False).all()
+    
+    result = []
+    for loan in pending_loans:
+        # Adatok lekérése
+        user_info = db.session.get(User, loan.user_id)
+        item_info = db.session.get(BookItem, loan.book_item_id)
+        book_info = db.session.get(Book, item_info.book_id) if item_info else None
+
+        result.append({
+            "loan_id": loan.id,
+            "user_name": user_info.name if user_info else "Ismeretlen",
+            "user_email": user_info.email if user_info else "",
+            "book_title": book_info.title if book_info else "Ismeretlen",
+            "barcode": item_info.barcode if item_info else "Nincs",
+            "request_date": loan.loan_date.strftime('%Y-%m-%d %H:%M') if loan.loan_date else "Nincs adat"
+        })
+
+    return jsonify(result), 200
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 if __name__ == '__main__':
