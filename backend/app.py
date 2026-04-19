@@ -1030,7 +1030,102 @@ def return_loan():
     }), 200
 
 
+#Bírság kiszabása:
 
+@app.route('/debts', methods=['POST'])
+@jwt_required()
+def create_debt():
+    """
+    Bírság kiszabása (Kizárólag könyvtáros).
+    ---
+    tags:
+      - Pénzügyek
+    security:
+      - Bearer: []
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            user_id:
+              type: integer
+              example: 3
+              description: "A felhasználó ID-ja, akire a bírságot kivetjük"
+            amount:
+              type: number
+              example: 1500.0
+              description: "A bírság összege (Ft)"
+            reason:
+              type: string
+              example: "Késedelmi díj"
+              description: "A bírság indoka"
+            loan_id:
+              type: integer
+              example: 12
+              description: "Opcionális: A kapcsolódó kölcsönzés azonosítója"
+    responses:
+      201:
+        description: Bírság sikeresen rögzítve
+      400:
+        description: Adateltérés (pl. a loan nem ehhez a felhasználóhoz tartozik)
+      403:
+        description: Nincs jogosultság (csak könyvtáros)
+      404:
+        description: A felhasználó vagy a kölcsönzés nem található
+    """
+    current_user_id = get_jwt_identity()
+    staff = db.session.get(User, current_user_id)
+
+    # 1. Jogosultság ellenőrzése: Szigorúan csak könyvtáros
+    if not staff or not staff.role_data or staff.role_data.name != 'librarian':
+        return jsonify({"msg": "Ehhez a művelethez könyvtárosi jogosultság szükséges!"}), 403
+
+    data = request.get_json()
+    user_id = data.get('user_id')
+    amount = data.get('amount')
+    reason = data.get('reason')
+    loan_id = data.get('loan_id')
+
+    # 2. Kötelező mezők ellenőrzése
+    if not user_id or amount is None or not reason:
+        return jsonify({"msg": "Hiányzó adatok! A user_id, amount és reason kötelező."}), 400
+
+    # 3. Felhasználó létezésének ellenőrzése
+    target_user = db.session.get(User, user_id)
+    if not target_user:
+        return jsonify({"msg": "A megadott felhasználó nem található!"}), 404
+
+    # 4. KRITIKUS KERESTELLENŐRZÉS: Ha van megadva loan_id
+    if loan_id:
+        loan = db.session.get(Loan, loan_id)
+        if not loan:
+            return jsonify({"msg": "A megadott kölcsönzés azonosító nem létezik!"}), 404
+        
+        # Ellenőrizzük, hogy a kölcsönzés tényleg a célszemélyé-e
+        if loan.user_id != user_id:
+            return jsonify({
+                "msg": f"Hiba! A(z) {loan_id} ID-jú kölcsönzés nem a(z) {user_id} ID-jú felhasználóhoz tartozik."
+            }), 400
+
+    # 5. Tartozás mentése
+    new_debt = Debt(
+        user_id=user_id,
+        loan_id=loan_id,
+        amount=float(amount),
+        reason=reason,
+        is_paid=False
+    )
+
+    db.session.add(new_debt)
+    db.session.commit()
+
+    return jsonify({
+        "msg": "Bírság sikeresen kiszabva!",
+        "debt_id": new_debt.id,
+        "felhasznalo": target_user.name
+    }), 201
 
 
 

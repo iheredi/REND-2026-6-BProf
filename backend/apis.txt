@@ -10,10 +10,10 @@ Felhasználó:
 -Pénz feltöltése számlára- kész
 
 Könyvtáros:
--Könyvkiadás -
--Könyvvisszavétel -
--Bírság kiszabás -
--Felhasználók kölcsönzéseinek listázása -
+-Könyvkiadás - kész
+-Könyvvisszavétel - kész
+-Bírság kiszabás - kész
+-Felhasználók kölcsönzéseinek listázása - kész
 
 Admin:
 -Könyv törlése a rendszerből - kész
