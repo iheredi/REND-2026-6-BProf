@@ -585,7 +585,39 @@ def pay_debt(debt_id):
         "osszeg": debt.amount,
         "maradek_egyenleg": user.balance
     }), 200
+#Könyvek lekérdezése
+@app.route('/books-with-available-item', methods=['GET'])
+def get_books_with_item():
+    """
+    Az összes könyv listázása a legelső elérhető példány azonosítójával.
+    ---
+    tags:
+      - Könyvkezelés
+    responses:
+      200:
+        description: Könyvek listája az első elérhető példány ID-jával
+    """
+    books = Book.query.all()
+    result = []
 
+    for book in books:
+        # Megkeressük a legelső olyan példányt, ami ehhez a könyvhöz tartozik ÉS elérhető
+        first_available_item = BookItem.query.filter_by(
+            book_id=book.id, 
+            status='available'
+        ).first()
+
+        result.append({
+            "book_id": book.id,
+            "title": book.title,
+            "author": book.author,
+            "is_borrowable": book.is_borrowable,
+            # Ha van elérhető példány, visszaadjuk az ID-ját, különben null-t
+            "available_item_id": first_available_item.id if first_available_item else None,
+            "can_be_borrowed_now": book.is_borrowable and first_available_item is not None
+        })
+
+    return jsonify(result), 200
 #------------Admin-------------
 # Könyv példány törlése
 @app.route('/book-items/<int:item_id>', methods=['DELETE'])

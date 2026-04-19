@@ -71,14 +71,36 @@ def seed_data():
         db.session.commit()
 
         # 5. PÉLDÁNYOK (Fizikai állapotok: ép, sérült, elveszett) 
-        items = [
+        """items = [
             BookItem(book_id=books[0].id, barcode="BC-001", status="available"), 
             BookItem(book_id=books[0].id, barcode="BC-002", status="borrowed"),  
             BookItem(book_id=books[1].id, barcode="BC-003", status="borrowed"),  
             BookItem(book_id=books[2].id, barcode="BC-004", status="damaged"),   
             BookItem(book_id=books[3].id, barcode="BC-005", status="lost"),      
             BookItem(book_id=books[4].id, barcode="BC-006", status="available")  
-        ]
+        ]"""
+        
+        items = []
+        for i in range(5):
+            target_book = books[i]
+            # 6 példány
+            for j in range(1, 7):
+                # Vonalkód generálás
+                barcode = f"BC-BK{target_book.id}-{j}"
+                
+                
+                status = "available"
+                if j == 1: status = "borrowed"
+                if j == 2: status = "damaged"
+                
+                new_item = BookItem(
+                    book_id=target_book.id, 
+                    barcode=barcode, 
+                    status=status
+                )
+                items.append(new_item)
+
+        
         db.session.add_all(items)
         db.session.commit()
 
