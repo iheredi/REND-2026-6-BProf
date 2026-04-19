@@ -959,7 +959,75 @@ def get_pending_loans():
 
     return jsonify(result), 200
 
+#Könyv visszavétel:
+@app.route('/return-loan', methods=['POST'])
+@jwt_required()
+def return_loan():
+    """
+    Könyv visszavétele vonalkód alapján (Kizárólag könyvtáros).
+    ---
+    tags:
+      - Kölcsönzés
+    security:
+      - Bearer: []
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            barcode:
+              type: string
+              example: "BC-BK1-1"
+              description: "A visszahozott fizikai példány vonalkódja"
+    responses:
+      200:
+        description: Könyv sikeresen visszavéve
+      400:
+        description: Hiányzó vonalkód, vagy a könyv nincs kikölcsönözve
+      403:
+        description: Nincs jogosultságod a művelethez (kizárólag könyvtáros)
+      404:
+        description: A példány nem található a rendszerben
+    """
+    current_user_id = get_jwt_identity()
+    staff = db.session.get(User, current_user_id)
+    
+    # Szigorúan CSAK könyvtáros (librarian) csinálhatja!
+    if not staff or not staff.role_data or staff.role_data.name != 'librarian':
+        return jsonify({"msg": "Ehhez a művelethez könyvtárosi jogosultság szükséges!"}), 403
 
+    data = request.get_json()
+    barcode = data.get('barcode')
+    
+    if not barcode:
+        return jsonify({"msg": "Hiányzó vonalkód a kérésből!"}), 400
+
+    # 2. Megkeressük a fizikai példányt a vonalkód alapján
+    item = BookItem.query.filter_by(barcode=barcode).first()
+    if not item:
+        return jsonify({"msg": "Nem található példány ezzel a vonalkóddal az adatbázisban!"}), 404
+
+    # 3. Megkeressük az ehhez a példányhoz tartozó AKTÍV kölcsönzést
+    loan = Loan.query.filter_by(book_item_id=item.id, is_active=True).first()
+    if not loan:
+        return jsonify({"msg": "Ez a példány jelenleg nincs kikölcsönözve (nincs aktív kölcsönzés rajta)."}), 400
+
+    # 4. Lezárjuk a kölcsönzést és felszabadítjuk a fizikai példányt
+    loan.is_active = False
+    item.status = 'available'
+    
+    # Kikeressük a könyv címét a válaszüzenethez
+    book = db.session.get(Book, item.book_id)
+    
+    db.session.commit()
+
+    return jsonify({
+        "msg": "A könyv sikeresen visszavéve, a kölcsönzés lezárva!",
+        "konyv_cime": book.title if book else "Ismeretlen könyv",
+        "vonalkod": item.barcode
+    }), 200
 
 
 

@@ -107,12 +107,14 @@ def seed_data():
         # 6. KÖLCSÖNZÉSEK (Hosszabbítások és előzmények) 
         now = datetime.utcnow()
         loans = [
-            # Aktív kölcsönzés, már 2x hosszabbítva (többször nem lehet!) 
-            Loan(user_id=u_olvaso1.id, book_item_id=items[1].id, loan_date=now-timedelta(days=20), due_date=now+timedelta(days=5), extension_count=2, is_active=True),
-            # Aktív, lejárt határidő (bírsághoz)
-            Loan(user_id=u_olvaso3.id, book_item_id=items[2].id, loan_date=now-timedelta(days=30), due_date=now-timedelta(days=2), is_active=True),
-            # Már lezárt kölcsönzés (előzményekhez)
-            Loan(user_id=u_olvaso2.id, book_item_id=items[0].id, loan_date=now-timedelta(days=50), due_date=now-timedelta(days=36), is_active=False)
+            # Aktív kölcsönzés (items[0] -> BC-BK1-1, ami 'borrowed') 
+            Loan(user_id=u_olvaso1.id, book_item_id=items[0].id, loan_date=now-timedelta(days=20), due_date=now+timedelta(days=5), extension_count=2, is_active=True),
+            
+            # Aktív, lejárt határidő (items[6] -> BC-BK2-1, ami 'borrowed')
+            Loan(user_id=u_olvaso3.id, book_item_id=items[6].id, loan_date=now-timedelta(days=30), due_date=now-timedelta(days=2), is_active=True),
+            
+            # Már lezárt kölcsönzés 
+            Loan(user_id=u_olvaso2.id, book_item_id=items[12].id, loan_date=now-timedelta(days=50), due_date=now-timedelta(days=36), is_active=False)
         ]
         db.session.add_all(loans)
         db.session.commit()
