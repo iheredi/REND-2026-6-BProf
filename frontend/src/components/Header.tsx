@@ -30,6 +30,11 @@ export default function Header() {
                                 Ping
                             </Link>
                         </li>
+                        <li className="nav-item">
+                            <Link className="nav-link" to={ROUTES.books}>
+                                Könyvek
+                            </Link>
+                        </li>
                         {(role === "librarian" || role === "admin") && (
                             <>
                                 <li className="nav-item">
@@ -61,7 +66,7 @@ export default function Header() {
                     </ul>
                     <ul className="navbar-nav ms-auto">
                         <li className="nav-item">
-                            <Link className="nav-link" to={ROUTES.vedett}>
+                            <Link className="nav-link" to={ROUTES.profile}>
                                 Profil
                             </Link>
                         </li>

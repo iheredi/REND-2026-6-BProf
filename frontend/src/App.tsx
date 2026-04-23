@@ -5,6 +5,7 @@ import Home from "./pages/Home";
 import Ping from "./pages/Ping";
 import Login from "./pages/Login";
 import Profile from "./pages/Profile";
+import Books from "./pages/Books";
 
 
 function App() {
@@ -14,9 +15,14 @@ function App() {
         <Route path={ROUTES.home} element={<Home />} />
         <Route path={ROUTES.ping} element={<Ping />} />
         <Route path={ROUTES.login} element={<Login />} />
-        <Route path={ROUTES.vedett} element={
+        <Route path={ROUTES.profile} element={
           <Protected>
-            <Profile />
+            <Profile />            
+          </Protected>
+        } />
+        <Route path={ROUTES.books} element={
+          <Protected>
+            <Books />            
           </Protected>
         } />
       </Routes>
