@@ -4,7 +4,7 @@ import Protected from "./components/Protected";
 import Home from "./pages/Home";
 import Ping from "./pages/Ping";
 import Login from "./pages/Login";
-import Vedett from "./pages/Vedett_oldal";
+import Profile from "./pages/Profile";
 
 
 function App() {
@@ -16,7 +16,7 @@ function App() {
         <Route path={ROUTES.login} element={<Login />} />
         <Route path={ROUTES.vedett} element={
           <Protected>
-            <Vedett />
+            <Profile />
           </Protected>
         } />
       </Routes>

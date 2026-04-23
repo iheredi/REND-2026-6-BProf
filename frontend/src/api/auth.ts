@@ -12,7 +12,8 @@ interface LoginResponse {
 interface MeResponse {
   id: string;
   email: string;
-  name?: string;
+  name: string;
+  role: string;
 }
 
 const TOKEN_KEY = "token";
@@ -20,7 +21,7 @@ const USER_KEY = "user";
 const ROLE_KEY = "role";
 
 export const saveAuth = (data: LoginResponse) => {
-  localStorage.setItem(TOKEN_KEY, data.access_token);
+  localStorage.setItem(TOKEN_KEY, data.access_token);  
   localStorage.setItem(USER_KEY, data.user);
   localStorage.setItem(ROLE_KEY, data.role);
 };

@@ -9,7 +9,7 @@ import Footer from "../components/Footer";
 
 export default function Login() {
     const navigate = useNavigate();
-    const { setUser } = useAuth();
+    const { setUser, setRole } = useAuth();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
@@ -26,7 +26,12 @@ export default function Login() {
             const meRes = await me();
 
             // 4. globális state frissítés
-            setUser(meRes.data);
+            setUser({
+                id: meRes.data.id,
+                email: meRes.data.email,
+                name: meRes.data.name
+            });
+            setRole(meRes.data.role);
 
             setError("");
 

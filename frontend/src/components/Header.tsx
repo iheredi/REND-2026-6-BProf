@@ -4,10 +4,7 @@ import { useAuth } from "../context/AuthContext";
 
 export default function Header() {
     const navigate = useNavigate();
-    const { user, logout } = useAuth();
-
-    // !!user azt jelenti, hogy ha van user, akkor booleant allitok be ra
-    const isLoggedIn = !!user;
+    const { isLoggedIn, logout, role } = useAuth();
 
     const handleLogout = () => {
         logout();
@@ -33,13 +30,42 @@ export default function Header() {
                                 Ping
                             </Link>
                         </li>
-                        <li className="nav-item">
-                            <Link className="nav-link" to={ROUTES.vedett}>
-                                Védett oldal
-                            </Link>
-                        </li>
+                        {(role === "librarian" || role === "admin") && (
+                            <>
+                                <li className="nav-item">
+                                    <Link className="nav-link" to="">
+                                        Konyvtaros1
+                                    </Link>
+                                </li>
+                                <li className="nav-item">
+                                    <Link className="nav-link" to="">
+                                        Konyvtaros2
+                                    </Link>
+                                </li>
+                            </>
+                        )}
+                        {role === "admin" && (
+                            <>
+                                <li className="nav-item">
+                                    <Link className="nav-link" to="">
+                                        Admin1
+                                    </Link>
+                                </li>
+                                <li className="nav-item">
+                                    <Link className="nav-link" to="">
+                                        Admin2
+                                    </Link>
+                                </li>
+                            </>
+                        )}
                     </ul>
                     <ul className="navbar-nav ms-auto">
+                        <li className="nav-item">
+                            <Link className="nav-link" to={ROUTES.vedett}>
+                                Profil
+                            </Link>
+                        </li>
+
                         {!isLoggedIn ? (
                             <li className="nav-item">
                                 <Link className="nav-link" to={ROUTES.login}>

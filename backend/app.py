@@ -115,6 +115,7 @@ def me():
         "msg": "success",
         "id": user.id,
         "email": user.email,
+        "name": user.name,
         "role": role
     }), 200
 

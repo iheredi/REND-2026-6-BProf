@@ -14,7 +14,7 @@ export default function Protected({ children }: ProtectedProps) {
     return <div>Loading...</div>;
   }
   // ha nincs user, login
-  if (user === null) {
+    if (!user) {
     return <Navigate to="/login" replace />;
   }
 
