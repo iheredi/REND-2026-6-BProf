@@ -278,7 +278,7 @@ def register():
         return jsonify({"msg": f"Hiba történt: {str(e)}"}), 500
     
 #Könyv előjegyzése    
-@app.route('/reservations', methods=['POST'])
+@app.route('/user/reservations', methods=['POST'])
 @jwt_required()
 def create_reservation():
     """
@@ -340,7 +340,7 @@ def create_reservation():
         "reservation_id": new_res.id
     }), 201
 #Kölcsönzési igény
-@app.route('/request-loan', methods=['POST'])
+@app.route('/user/request-loan', methods=['POST'])
 @jwt_required()
 def request_loan():
     """
@@ -411,7 +411,7 @@ def request_loan():
     }), 201
 
 #felhasználó személyes adat módosítása
-@app.route('/update-profile', methods=['PUT'])
+@app.route('/user/update-profile', methods=['PUT'])
 @jwt_required()
 def update_profile():
     """
@@ -471,7 +471,7 @@ def update_profile():
     return jsonify({"msg": "Profil adatok sikeresen frissítve"}), 200
 #Ez különleges mert ADMIN és KÖNYVTÁROS is csinálhatja
 #Kölcsönzési idő hosszabbítás:
-@app.route('/extend-loan/<int:loan_id>', methods=['POST'])
+@app.route('/user/extend-loan/<int:loan_id>', methods=['POST'])
 @jwt_required()
 def extend_loan(loan_id):
     """
@@ -535,7 +535,7 @@ def extend_loan(loan_id):
         "hosszabbitasok_szama": loan.extension_count
     }), 200
 #-Pénz feltöltése számlára-
-@app.route('/add-balance', methods=['POST'])
+@app.route('/user/add-balance', methods=['POST'])
 @jwt_required()
 def add_balance():
     """
@@ -589,7 +589,7 @@ def add_balance():
         "hozzaadott_osszeg": amount
     }), 200
 #Tartozás kifizetése
-@app.route('/pay-debt/<int:debt_id>', methods=['POST'])
+@app.route('/user/pay-debt/<int:debt_id>', methods=['POST'])
 @jwt_required()
 def pay_debt(debt_id):
     """
@@ -657,7 +657,8 @@ def pay_debt(debt_id):
         "maradek_egyenleg": user.balance
     }), 200
 #Könyvek lekérdezése
-@app.route('/books-with-available-item', methods=['GET'])
+@app.route('/user/books', methods=['GET'])
+@jwt_required()
 def get_books_with_item():
     """
     Az összes könyv listázása a legelső elérhető példány azonosítójával.
@@ -668,30 +669,56 @@ def get_books_with_item():
       200:
         description: Könyvek listája az első elérhető példány ID-jával
     """
+    current_user_id = get_jwt_identity()
+    
+    # 1. Lekérjük a user összes aktív vagy pending kölcsönzését
+    user_loans = Loan.query.filter(Loan.user_id == current_user_id).all()
+    
+    # Készítünk egy szótárat: book_id -> loan_status (hogy könnyen keressünk)
+    user_book_status = {}
+    for loan in user_loans:
+        item = db.session.get(BookItem, loan.book_item_id)
+        if item:
+            # Ha is_active True, akkor már nála van, ha False, akkor még csak kérte (pending)
+            status_text = "Már nálad van" if loan.is_active else "Jóváhagyásra vár"
+            user_book_status[item.book_id] = status_text
+
+    # 2. Lekérjük az összes könyvet
     books = Book.query.all()
     result = []
 
     for book in books:
-        # Megkeressük a legelső olyan példányt, ami ehhez a könyvhöz tartozik ÉS elérhető
+        # Megkeressük a legelső elérhető példányt
         first_available_item = BookItem.query.filter_by(
             book_id=book.id, 
             status='available'
         ).first()
+
+        # Meghatározzuk a könyv aktuális állapotát a user számára
+        user_status = user_book_status.get(book.id, "Kölcsönözhető")
+        
+        # Csak akkor engedjük a gombot, ha se nem pending, se nem borrowed a usernek, 
+        # ÉS van szabad példány, ÉS a könyv alapból kölcsönözhető
+        is_actually_available = (
+            book.id not in user_book_status and 
+            first_available_item is not None and 
+            book.is_borrowable
+        )
 
         result.append({
             "book_id": book.id,
             "title": book.title,
             "author": book.author,
             "is_borrowable": book.is_borrowable,
-            # Ha van elérhető példány, visszaadjuk az ID-ját, különben null-t
             "available_item_id": first_available_item.id if first_available_item else None,
-            "can_be_borrowed_now": book.is_borrowable and first_available_item is not None
+            "user_specific_status": user_status, # "Már nálad van", "Jóváhagyásra vár" vagy "Kölcsönözhető"
+            "can_be_borrowed_now": is_actually_available
         })
 
     return jsonify(result), 200
 #------------Admin-------------
 # Könyv példány törlése
-@app.route('/book-items/<int:item_id>', methods=['DELETE'])
+@app.route('/admin/book-items/<int:item_id>', methods=['DELETE'])
 @jwt_required()
 def delete_book_item(item_id):
     """
@@ -732,7 +759,7 @@ def delete_book_item(item_id):
     return jsonify({"msg": f"A(z) {item.barcode} vonalkódú példány sikeresen eltávolítva."}), 200
 
 # Könyv hozzáadása
-@app.route('/books', methods=['POST'])
+@app.route('/admin/books', methods=['POST'])
 @jwt_required()
 def create_book():
     """
@@ -794,7 +821,7 @@ def create_book():
 
 
 # Új könyvpéldányok hozzáadása
-@app.route('/book-items', methods=['POST'])
+@app.route('/admin/book-items', methods=['POST'])
 @jwt_required()
 def add_book_items():
     """
@@ -859,7 +886,7 @@ def add_book_items():
     }), 201
 
 #----- KÖNYVTÁROS ------
-@app.route('/approve-loan/<int:loan_id>', methods=['POST'])
+@app.route('/librarian/approve-loan/', methods=['POST'])
 @jwt_required()
 def approve_loan(loan_id):
     """
@@ -916,7 +943,7 @@ def approve_loan(loan_id):
         "konyv_peldany": item.barcode if item else "Ismeretlen"
     }), 200
 # Várakozó könyv kölcsönzési igények
-@app.route('/pending-loans', methods=['GET'])
+@app.route('/librarian/pending-loans', methods=['GET'])
 @jwt_required()
 def get_pending_loans():
     """
@@ -961,7 +988,7 @@ def get_pending_loans():
     return jsonify(result), 200
 
 #Könyv visszavétel:
-@app.route('/return-loan', methods=['POST'])
+@app.route('/librarian/return-loan', methods=['POST'])
 @jwt_required()
 def return_loan():
     """
@@ -1033,7 +1060,7 @@ def return_loan():
 
 #Bírság kiszabása:
 
-@app.route('/debts', methods=['POST'])
+@app.route('/librarian/debts', methods=['POST'])
 @jwt_required()
 def create_debt():
     """
