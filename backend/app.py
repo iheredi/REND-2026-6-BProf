@@ -696,6 +696,101 @@ def get_books_with_item():
         })
 
     return jsonify(result), 200
+
+#Lefoglalt könyvek és függőben lévő könyvek checkolása
+@app.route('/user/loans', methods=['GET'])
+@jwt_required()
+def get_my_loans():
+    """
+    A bejelentkezett felhasználó aktív és függőben lévő kölcsönzéseinek lekérése.
+    ---
+    tags:
+      - Felhasználói műveletek
+    security:
+      - Bearer: []
+    responses:
+      200:
+        description: A felhasználó kölcsönzéseinek listája (tartalmazza a loan_id-t)
+    """
+    current_user_id = get_jwt_identity()
+
+    # Itt azokat listázzuk, amik vagy aktívak, vagy függőben vannak
+    my_loans = db.session.query(Loan, BookItem, Book).join(
+        BookItem, Loan.book_item_id == BookItem.id
+    ).join(
+        Book, BookItem.book_id == Book.id
+    ).filter(
+        Loan.user_id == current_user_id
+    ).all()
+
+    result = []
+    for loan, item, book in my_loans:
+        result.append({
+            "loan_id": loan.id,
+            "book_title": book.title,
+            "author": book.author,
+            "barcode": item.barcode,
+            "loan_date": loan.loan_date.strftime('%Y-%m-%d %H:%M') if loan.loan_date else "Függőben",
+            "due_date": loan.due_date.strftime('%Y-%m-%d %H:%M') if loan.due_date else "Függőben",
+            "status": "Aktív" if loan.is_active else "Jóváhagyásra vár (Pending)",
+            "is_active": loan.is_active
+        })
+
+    return jsonify(result), 200
+#Foglalás törlése
+
+@app.route('/user/loan/<int:loan_id>', methods=['DELETE'])
+@jwt_required()
+def delete_loan_request(loan_id):
+    """
+    Függőben lévő (Pending) kölcsönzési kérelem törlése a Loan táblából.
+    ---
+    tags:
+      - Felhasználói műveletek
+    security:
+      - Bearer: []
+    parameters:
+      - name: loan_id
+        in: path
+        type: integer
+        required: true
+        description: A törlendő kölcsönzés azonosítója
+    responses:
+      200:
+        description: Kérelem sikeresen törölve, a könyv újra elérhető
+      403:
+        description: Nincs jogosultságod más kérését törölni
+      400:
+        description: Aktív kölcsönzést nem lehet törölni
+      404:
+        description: A kölcsönzés nem található
+    """
+    current_user_id = get_jwt_identity()
+    
+    # Megkeressük a kölcsönzést
+    loan = db.session.get(Loan, loan_id)
+
+    if not loan:
+        return jsonify({"msg": "A kölcsönzési kérelem nem található!"}), 404
+
+    if str(loan.user_id) != str(current_user_id):
+        return jsonify({"msg": "Nincs jogosultságod más kérését törölni!"}), 403
+
+    # Csak a PENDING (is_active=False) kérést szabad törölni!
+    if loan.is_active:
+        return jsonify({"msg": "Az aktív kölcsönzést nem lehet törölni! Kérlek hozd vissza a könyvet."}), 400
+
+  
+    # Mivel a könyv 'reserved' lett a státusza, most vissza kell tenni 'available'-re
+    item = db.session.get(BookItem, loan.book_item_id)
+    if item:
+        item.status = 'available'
+
+    # Törlés Loan táblából
+    db.session.delete(loan)
+    db.session.commit()
+
+    return jsonify({"msg": "A kölcsönzési kérelmet sikeresen törölted, a könyv újra szabad."}), 200
 #------------Admin-------------
 # Könyv példány törlése
 @app.route('/admin/book-items/<int:item_id>', methods=['DELETE'])
