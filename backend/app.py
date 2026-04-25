@@ -449,69 +449,61 @@ def update_profile():
                 
     db.session.commit()
     return jsonify({"msg": "Profil adatok sikeresen frissítve"}), 200
-#Ez különleges mert ADMIN és KÖNYVTÁROS is csinálhatja
+
 #Kölcsönzési idő hosszabbítás:
-@app.route('/user/extend-loan/<int:loan_id>', methods=['POST'])
+@app.route('/user/loan', methods=['POST'])
 @jwt_required()
-def extend_loan(loan_id):
+def user_extend_loan():
     """
-    Kölcsönzési idő meghosszabbítása (max 2 alkalommal).
+    Kölcsönzés hosszabbítása az olvasó által (Body-ban küldött ID-val).
     ---
     tags:
       - Felhasználói műveletek
     security:
       - Bearer: []
     parameters:
-      - name: loan_id
-        in: path
-        type: integer
+      - name: body
+        in: body
         required: true
+        schema:
+          type: object
+          properties:
+            loan_id:
+              type: integer
+              example: 1
     responses:
       200:
         description: Sikeres hosszabbítás
-      400:
-        description: Hiba (pl. már kétszer hosszabbított)
-      404:
-        description: Kölcsönzés nem található
     """
+    data = request.get_json()
+    loan_id = data.get('loan_id') 
+
+    if not loan_id:
+        return jsonify({"msg": "Hiányzó loan_id a kérésből!"}), 400
+
     current_user_id = get_jwt_identity()
-    
+    loan = db.session.get(Loan, loan_id)
 
-    
-    
-    user = db.session.get(User, current_user_id)
-    if not user:
-        return jsonify({"msg": "Felhasználó nem található!"}), 404
+    if not loan or not loan.is_active:
+        return jsonify({"msg": "Aktív kölcsönzés nem található!"}), 404
 
-    #Megnézzük, hogy milyen role-ba van ha admin vagy könyvtáros akkor többször is hosszabbíthat
-    role = db.session.get(Role, user.role_id)
-    is_staff = role.name in ['librarian', 'admin'] if role else False
-    
-    if is_staff:
-        loan = Loan.query.filter_by(id=loan_id, is_active=True).first()
-    else:
-        loan = Loan.query.filter_by(id=loan_id, user_id=current_user_id, is_active=True).first()   
+  
+    if str(loan.user_id) != str(current_user_id):
+        return jsonify({"msg": "Nincs jogosultságod más kölcsönzését hosszabbítani!"}), 403
 
-    
-    # Kikeressük az aktív kölcsönzést, ami ehhez a felhasználóhoz tartozik
-    if is_staff:
-        loan = Loan.query.filter_by(id=loan_id, is_active=True).first()
-    else:    
-      loan = Loan.query.filter_by(id=loan_id, user_id=current_user_id, is_active=True).first()
-    
-    if not loan:
-        return jsonify({"msg": "Aktív kölcsönzés nem található ezen az azonosítón!"}), 404
-        
-    if not is_staff and loan.extension_count >= 2:
-        return jsonify({"msg": "Ezt a könyvet már 2 alkalommal meghosszabbítottad, több lehetőség nincs."}), 400
-        
+    #  Limit: Max 2
+    if loan.extension_count >= 2:
+        return jsonify({"msg": "Ezt a könyvet már kétszer meghosszabbítottad!"}), 400
+
+    #  Hosszabbítás
+    loan.due_date += timedelta(days=14)
     loan.extension_count += 1
-    loan.due_date = loan.due_date + timedelta(days=14)
     
     db.session.commit()
+
     return jsonify({
         "msg": "Sikeres hosszabbítás!",
-        "uj_hatarido": loan.due_date.strftime('%Y-%m-%d %H:%M'),
+        "uj_hatarido": loan.due_date.strftime('%Y-%m-%d'),
         "hosszabbitasok_szama": loan.extension_count
     }), 200
 #-Pénz feltöltése számlára-
