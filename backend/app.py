@@ -278,67 +278,47 @@ def register():
         return jsonify({"msg": f"Hiba történt: {str(e)}"}), 500
     
 #Könyv előjegyzése    
-@app.route('/user/reservations', methods=['POST'])
+@app.route('/user/reservations', methods=['GET'])
 @jwt_required()
-def create_reservation():
+def get_my_reservations():
     """
-    Könyv előjegyzése (foglalása)
+    A bejelentkezett felhasználó saját aktív foglalásainak (várólista) lekérése.
     ---
     tags:
       - Felhasználói műveletek
     security:
       - Bearer: []
-    parameters:
-      - name: body
-        in: body
-        required: true
-        schema:
-          properties:
-            book_id:
-              type: integer
-              example: 1
-              description: A könyv általános azonosítója (Book.id)
     responses:
-      201:
-        description: Sikeres előjegyzés
-      400:
-        description: Már van aktív előjegyzése erre a könyvre
-      404:
-        description: A könyv nem található
+      200:
+        description: A felhasználó foglalásainak listája
+      401:
+        description: Hiányzó vagy lejárt token
     """
-    data = request.get_json()
-    book_id = data.get('book_id')
-    user_id = get_jwt_identity() # A tokenből kinyerjük a bejelentkezett user ID-t
+    # Azonosítás a token alapján 
+    current_user_id = get_jwt_identity()
 
-    # 1. Ellenőrizzük, létezik-e a könyv
-    book = db.session.get(Book, book_id)
-    if not book:
-        return jsonify({"msg": "A könyv nem található!"}), 404
-
-    # 2. Ellenőrizzük, nincs-e már aktív foglalása ugyanerre a könyvre
-    existing_res = Reservation.query.filter_by(
-        user_id=user_id, 
-        book_id=book_id, 
-        status='active'
-    ).first()
     
-    if existing_res:
-        return jsonify({"msg": "Már van egy aktív előjegyzésed erre a könyvre!"}), 400
+    # Összekapcsoljuk a Book táblával, hogy lássuk a címeket is
+    my_res = db.session.query(Reservation, Book).join(
+        Book, Reservation.book_id == Book.id
+    ).filter(
+        Reservation.user_id == current_user_id,
+        Reservation.status == 'active'
+    ).all()
 
-    # 3. Foglalás létrehozása
-    new_res = Reservation(
-        user_id=user_id,
-        book_id=book_id,
-        status='active'
-    )
+    result = []
+    for res, book in my_res:
+        result.append({
+            "reservation_id": res.id,
+            "book_id": book.id,
+            "title": book.title,
+            "author": book.author,
+            "reserved_at": res.reserved_at.strftime('%Y-%m-%d %H:%M'),
+            "status": res.status
+        })
 
-    db.session.add(new_res)
-    db.session.commit()
-
-    return jsonify({
-        "msg": f"Sikeresen előjegyezted a(z) '{book.title}' című könyvet!",
-        "reservation_id": new_res.id
-    }), 201
+    #Csak a felhasználó saját foglalásait adjuk vissza
+    return jsonify(result), 200
 #Kölcsönzési igény
 @app.route('/user/request-loan', methods=['POST'])
 @jwt_required()
