@@ -45,7 +45,8 @@ class Book(db.Model):
 class BookItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     book_id = db.Column(db.Integer, db.ForeignKey('book.id'))
-    barcode = db.Column(db.String(50), unique=True)
+#    barcode = db.Column(db.String(50), unique=True)
+    barcode = db.Column(db.String(50), unique=True, nullable=False)
     status = db.Column(db.String(20), default='available') 
 
 # --- KÖLCSÖNZÉS & ELŐJEGYZÉS ---

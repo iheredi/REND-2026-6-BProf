@@ -4,10 +4,10 @@ from models import db, User, Role, Address, Book, BookItem, Reservation, Loan, D
 
 admin_bp = Blueprint('admin', __name__)
 
-# Könyv példány törlése
-@admin_bp.route('/admin/book-items/<int:item_id>', methods=['DELETE'])
+# Könyv törlése
+@admin_bp.route('/admin/books/<int:book_id>', methods=['DELETE'])
 @jwt_required()
-def delete_book_item(item_id):
+def delete_book(book_id):
     """
     Konkrét könyvpéldány törlése (Csak Admin)
     ---
@@ -30,20 +30,30 @@ def delete_book_item(item_id):
         description: A példány nem található
     """
     claims = get_jwt()
-    if claims.get('role') != 'admin': # Itt adjuk meg,hogy csak admin joggal törölhetünk
-        return jsonify({"msg": "Csak adminisztrátor törölhet példányt!"}), 403
+    if claims.get('role') != 'admin':
+        return jsonify({"msg": "Csak admin törölhet könyvet!"}), 403
 
-    item = db.session.get(BookItem, item_id)
-    if not item: # Nyilván ha nincs benne a db-ben akkor nem tudod törölni
-        return jsonify({"msg": "Ez a példány nem létezik az adatbázisban."}), 404
+    book = db.session.get(Book, book_id)
+    if not book:
+        return jsonify({"msg": "A könyv nem található!"}), 404
 
-    if item.status == 'borrowed': # És nyilván kölcsönzött példányt se tudsz törölni 
-        return jsonify({"msg": "A példány nem törölhető, mert jelenleg kölcsönzés alatt áll!"}), 400
+    # Van-e kölcsönzés alatt álló példány?
+    active_loans = Loan.query.join(BookItem).filter(
+        BookItem.book_id == book_id,
+        Loan.is_active == True
+    ).first()
 
-    db.session.delete(item)
+    if active_loans:
+        return jsonify({"msg": "A könyv nem törölhető, mert van kölcsönzés alatt álló példánya!"}), 400
+
+    # Töröljük a példányokat
+    BookItem.query.filter_by(book_id=book_id).delete()
+
+    # Töröljük magát a könyvet
+    db.session.delete(book)
     db.session.commit()
-    
-    return jsonify({"msg": f"A(z) {item.barcode} vonalkódú példány sikeresen eltávolítva."}), 200
+
+    return jsonify({"msg": "Könyv és példányai sikeresen törölve!"}), 200
 
 # Könyv hozzáadása
 @admin_bp.route('/admin/books', methods=['POST'])
@@ -157,12 +167,13 @@ def add_book_items():
     for _ in range(count):
         new_item = BookItem(
             book_id=book_id,
-            status='available'
+            status="available",
+            barcode="TEMP" 
         )
         db.session.add(new_item)
-        db.session.flush()  # generál ID-t
-
-        new_item.barcode = f"BOOKITEM-{new_item.id}"
+        db.session.flush()  
+        #new_item.barcode = f"TESTBOKKITEM-{new_item.id}"
+        new_item.barcode = f"BC-BK{book_id}-{new_item.id}"
         created_items.append(new_item.barcode)
 
     db.session.commit()

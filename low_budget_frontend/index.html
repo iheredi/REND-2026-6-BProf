@@ -262,6 +262,28 @@
         }
     }
 
+    //teszt 2 -OK, úgy tűnik
+    async function deleteBook() { 
+        const book_id = document.getElementById("edit-book-id").value;
+
+        if (!book_id) {
+            alert("Add meg a könyv ID-ját!");
+            return;
+        }
+
+        if (!confirm("Biztosan törölni szeretnéd ezt a könyvet és az összes példányát?")) {
+            return;
+        }
+
+        const res = await apiCall(`/admin/books/${book_id}`, "DELETE");
+
+        if (res.ok) {
+            alert(res.data.msg);
+        } else {
+            alert(res.data.msg);
+        }
+    }
+
     // ================= PROFIL (Közös) =================
     async function loadProfileData() {
         const res = await apiCall("/user/profile");
@@ -422,6 +444,28 @@
     }
 
     // ================= ADMIN FUNKCIÓK =================
+
+    //második próba, hogy hozzá adja a könyv példányokat
+    async function addBookItems() {  
+        const book_id = parseInt(document.getElementById("add-item-bookid").value);
+        const count = parseInt(document.getElementById("add-item-count").value);
+
+        if (!book_id || !count) {
+            alert("Kérlek add meg a könyv ID-t és a darabszámot!");
+            return;
+        }
+
+        const body = { book_id, count };
+        const res = await apiCall("/admin/book-items", "POST", body);
+
+        if (res.ok) {
+            alert(res.data.msg + "\nVonalkódok:\n" + res.data.barcodes.join("\n"));
+        } else {
+            alert(res.data.msg);
+        }
+    }
+
+
     async function createBook() {
         const body = { title: document.getElementById("add-book-title").value, author: document.getElementById("add-book-author").value, is_borrowable: document.getElementById("add-book-borrowable").value === "true" };
         const res = await apiCall("/admin/books", "POST", body); alert(res.data.msg);
@@ -431,7 +475,7 @@
         const res = await apiCall("/admin/book-items", "POST", body); alert(res.data.msg);
     }
     async function editBook() { alert("API FIGYELMEZTETÉS: Ehhez hiányzik a PUT /admin/books/<id> végpont!"); }
-    async function deleteBook() { alert("API FIGYELMEZTETÉS: Ehhez hiányzik a DELETE /admin/books/<id> végpont!"); }
+    //async function deleteBook() { alert("API FIGYELMEZTETÉS: Ehhez hiányzik a DELETE /admin/books/<id> végpont!"); }
     async function changeItemStatus() { alert("API FIGYELMEZTETÉS: Ehhez hiányzik a PUT /admin/book-items/<id>/status végpont!"); }
 </script>
 </body>
