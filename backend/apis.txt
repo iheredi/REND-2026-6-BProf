@@ -1,32 +1,49 @@
 auth.py:
+Általános funkciók:
+
 -teszt, hogy működik-e egyáltalán az api (fronted check) - kész
 -ki az authentikalt user - ha van (backend check) - kész
+-Login POST - kész
+-Új felhasz regisztálása POST - kész
 
+általános mert admin, könyvtáros és regisztrált felhasználó is módosíthat:
+-felhasználó személyes profil lekérése GET - kész
+-felhasználó személyes adat módosítása POST - kész
+
+-----------------------------------------------------------------
 user.py:
+Regisztrált/bejelentkezett felhasználó funkciók:
 
+-Könyv előjegyzése GET - kész
+-Kölcsönzési igény POST - kész
+-Kölcsönzési idő hosszabbítás POST - kész
+-Pénz feltöltése számlára POST - kész
+-Tartozás kifizetése POST - kész
+-Könyvek lekérdezése GET - kész
+-Lefoglalt könyvek és függőben lévő könyvek checkolása GET - kész
+-Foglalás törlése DELETE - kész
 
+-----------------------------------------------------------------
+libararian.py:
+Könyvtáros funkciók:
 
-Felhasználó:
--Regisztráció - kész
--Bejelentkezés - kész
--Személyes adat módosítás - kész
--Könyv előjegyzés - kész
--Kölcsönzési idő hosszabbítás - kész
--Kölcsönözhető könyvek listázása -
--Saját kölcsönzések megtekintése -
--Bíráság kifizetése- kész
--Pénz feltöltése számlára- kész
+-Összes kölcsönzés listázása GET - kész
+-kölcsönzési igény jóváhagyás POST - kész
+-Várakozó könyv kölcsönzési igények GET - kész
+-Bírság kiszabása POST - kész
+-Kölcsönzési idő hosszabbítás POST - kész
 
-Könyvtáros:
--Könyvkiadás - kész
--Könyvvisszavétel - kész
--Bírság kiszabás - kész
--Felhasználók kölcsönzéseinek listázása - kész
+-----------------------------------------------------------------
+admin.py:
+Admin funkciók:
+-Könyv példány törlése DELETE - kész
+-Könyv hozzáadása POST - kész
+-Új könyvpéldányok hozzáadása POST - kész
 
-Admin:
--Könyv törlése a rendszerből - kész
--Teljesen új könyv felvétele - kész
 -Meglévő könyv adatainak szerkesztése - 
--Új példányok hozzáadása (pl +2 Egri csillagok) - kész
 -Könyv fizikai állapot módosítása- 
+
+-----------------------------------------------------------------
+
+
 

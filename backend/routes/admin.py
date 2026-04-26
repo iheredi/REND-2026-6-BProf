@@ -53,7 +53,7 @@ def create_book():
     Új könyv felvétele (ADMIN)
     ---
     tags:
-      - Admin Műveletek
+      - Admin műveletek
     security:
       - Bearer: []
     parameters:
@@ -115,7 +115,7 @@ def add_book_items():
     Új könyvpéldányok hozzáadása (Csak Admin)
     ---
     tags:
-      - Admin Műveletek
+      - Admin műveletek
     security:
       - Bearer: []
     parameters:
