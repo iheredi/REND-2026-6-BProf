@@ -506,6 +506,17 @@ def get_my_loans():
                 status_text = "Jóváhagyásra vár (Pending)"
             else:
                 status_text = "Visszahozva (Előzmény)"
+
+        days_left_text = "-"
+        if loan.is_active and loan.due_date:
+            delta = loan.due_date.date() - datetime.now().date()
+            if delta.days > 0:
+                days_left_text = f"{delta.days} nap van hátra"
+            elif delta.days == 0:
+                days_left_text = "Ma jár le!"
+            else:
+                days_left_text = f"Lejárt {abs(delta.days)} napja!"
+            
         result.append({
             "loan_id": loan.id,
             "book_title": book.title,
@@ -514,7 +525,8 @@ def get_my_loans():
             "loan_date": loan.loan_date.strftime('%Y-%m-%d %H:%M') if loan.loan_date else "Függőben",
             "due_date": loan.due_date.strftime('%Y-%m-%d %H:%M') if loan.due_date else "Függőben",
             "status": status_text,
-            "is_active": loan.is_active
+            "is_active": loan.is_active,
+            "days_remaining": days_left_text
         })
 
     return jsonify(result), 200

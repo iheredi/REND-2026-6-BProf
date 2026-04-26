@@ -359,6 +359,7 @@
             <div style='background:${l.is_active ? "#e8f5e9":"#eee"}; padding:10px; margin-bottom:5px; border-left: 5px solid ${l.is_active ? "green":"gray"}'>
                 <strong>${l.book_title}</strong><br>
                 Státusz: <strong>${l.status}</strong><br>
+                ${l.is_active ? `Hátralévő idő: <strong style='color:${l.days_remaining.includes("Lejárt") ? "red" : "black"}'>${l.days_remaining}</strong><br>` : ''}
                 Hosszabbítva: ${l.extension_count || 0} / 2 alkalommal<br>
                 ${(l.is_active && (l.extension_count || 0) < 2) ? `<button class='btn-primary' style='margin-top:5px;' onclick='extendLoan(${l.loan_id})'>Hosszabbítás (+14 nap)</button>` : ''}
                 ${(l.status === 'Jóváhagyásra vár (Pending)') ? `<button class='btn-danger' style='margin-top:5px;' onclick='cancelLoanReq(${l.loan_id})'>Igény Törlése</button>` : ''}
