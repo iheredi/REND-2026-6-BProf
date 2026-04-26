@@ -1,3 +1,11 @@
+auth.py:
+-teszt, hogy működik-e egyáltalán az api (fronted check) - kész
+-ki az authentikalt user - ha van (backend check) - kész
+
+user.py:
+
+
+
 Felhasználó:
 -Regisztráció - kész
 -Bejelentkezés - kész

@@ -12,7 +12,7 @@ def delete_book_item(item_id):
     Konkrét könyvpéldány törlése (Csak Admin)
     ---
     tags:
-      - Admin Műveletek
+      - Admin műveletek
     security:
       - Bearer: []
     parameters:

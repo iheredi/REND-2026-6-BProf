@@ -1,0 +1,6 @@
+Kérlek ideírjátok az esetleges hibákat amit találtok.
+Ide főként funkcióbali hibákat gyűjtsük amiket javítani kellene. 
+Például: User is tud könyv adatot módosítani vagy hasonlók.
+----------------------------------------------------------------
+
+

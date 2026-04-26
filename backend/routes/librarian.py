@@ -10,6 +10,80 @@ librarian_bp = Blueprint('librarian', __name__)
 
 
 #----- KÖNYVTÁROS ------
+# Összes kölcsönzés listázása (Könyvtáros)
+@librarian_bp.route('/librarian/loans', methods=['GET'])
+@jwt_required()
+def get_all_loans():
+    """
+    Az összes kölcsönzés kilistázása a könyvtáros számára.
+    Kiszámolja a késést (is_overdue) is!
+    ---
+    tags:
+      - Könyvtárosi műveletek
+    security:
+      - Bearer: []
+    parameters:
+      - name: status
+        in: query
+        type: string
+        required: false
+        description: "Szűrés állapota (opcionális). Értékei: 'active' vagy 'pending'"
+    responses:
+      200:
+        description: A kölcsönzések listája sikeresen lekérve
+      403:
+        description: Nincs könyvtárosi jogosultságod
+    """
+    current_user_id = get_jwt_identity()
+    staff = db.session.get(User, current_user_id)
+    
+    # Jogosultság ellenőrzése
+    if not staff or not staff.role_data or staff.role_data.name not in ['librarian', 'admin']:
+        return jsonify({"msg": "Ehhez a művelethez könyvtárosi jogosultság szükséges!"}), 403
+
+    # Opcionális szűrés kinyerése az URL-ből (pl. ?status=active)
+    status_filter = request.args.get('status')
+
+    # Alap lekérdezés: minden kölcsönzés
+    query = Loan.query
+
+    if status_filter == 'active':
+        query = query.filter_by(is_active=True)
+    elif status_filter == 'pending':
+        query = query.filter_by(is_active=False)
+
+    loans = query.all()
+    
+    # Adatok formázása és a késés kiszámítása a frontend számára
+    result = []
+    now = datetime.now() # Jelenlegi pontos idő
+
+    for loan in loans:
+        is_overdue = False
+        days_overdue = 0
+
+        # Ha aktív a kölcsönzés, és a határidő kisebb (korábbi), mint a mostani idő
+        if loan.is_active and loan.due_date and loan.due_date < now:
+            is_overdue = True
+            delta = now - loan.due_date
+            days_overdue = delta.days # Kiszámoljuk, hány napja késik
+
+        result.append({
+            "loan_id": loan.id,
+            "user_id": loan.user_id,
+            "book_item_id": loan.book_item_id,
+            "is_active": loan.is_active,
+            "extension_count": loan.extension_count,
+            "due_date": loan.due_date.strftime('%Y-%m-%d %H:%M') if loan.due_date else None,
+            "is_overdue": is_overdue,         # ÚJ: Késésben van-e? (True/False)
+            "days_overdue": days_overdue      # ÚJ: Hány napja késik?
+        })
+
+    return jsonify(result), 200
+
+
+
+
 
 #kölcsönzési igény jóváhagyás
 @librarian_bp.route('/librarian/approve-loan/', methods=['POST'])
@@ -19,7 +93,7 @@ def approve_loan(loan_id):
     Kölcsönzési igény jóváhagyása és aktiválása (Csak könyvtáros/admin).
     ---
     tags:
-      - Kölcsönzés
+      - Könyvtárosi műveletek
     security:
       - Bearer: []
     parameters:
@@ -76,7 +150,7 @@ def get_pending_loans():
     Várakozó (Pending) kölcsönzési igények listázása könyvtárosoknak.
     ---
     tags:
-      - Kölcsönzés
+      - Könyvtárosi műveletek
     security:
       - Bearer: []
     responses:
@@ -121,7 +195,7 @@ def return_loan():
     Könyv visszavétele vonalkód alapján (Kizárólag könyvtáros).
     ---
     tags:
-      - Kölcsönzés
+      - Könyvtárosi műveletek
     security:
       - Bearer: []
     parameters:
@@ -193,7 +267,7 @@ def create_debt():
     Bírság kiszabása (Kizárólag könyvtáros).
     ---
     tags:
-      - Pénzügyek
+      - Könyvtárosi műveletek
     security:
       - Bearer: []
     parameters:
@@ -280,3 +354,83 @@ def create_debt():
         "debt_id": new_debt.id,
         "felhasznalo": target_user.name
     }), 201
+
+
+
+#Kölcsönzési idő hosszabbítás:
+@librarian_bp.route('/librarian/extend-loan/<int:loan_id>', methods=['POST'])
+@jwt_required()
+def librarian_extend_loan(loan_id):
+    """
+    Kölcsönzés hosszabbítása a könyvtáros által.
+    A könyvtáros megadhatja a hosszabbítás napjainak számát (max 100 nap).
+    Maximum 3 hosszabbítás lehetséges összesen. Nincs előjegyzés-ellenőrzés.
+    ---
+    tags:
+      - Könyvtárosi műveletek
+    security:
+      - Bearer: []
+    parameters:
+      - name: loan_id
+        in: path
+        type: integer
+        required: true
+        description: A hosszabbítandó kölcsönzés (Loan) azonosítója
+      - name: body
+        in: body
+        required: false
+        schema:
+          type: object
+          properties:
+            days:
+              type: integer
+              example: 50
+              description: "Hány nappal hosszabbítjuk meg? (Maximum 100)"
+    responses:
+      200:
+        description: Sikeres hosszabbítás
+      400:
+        description: Limit elérve, vagy hibás napok száma
+      403:
+        description: Nincs könyvtárosi jogosultságod
+      404:
+        description: Aktív kölcsönzés nem található
+    """
+    current_user_id = get_jwt_identity()
+    staff = db.session.get(User, current_user_id)
+    
+    # Jogosultság ellenőrzése
+    if not staff or not staff.role_data or staff.role_data.name != 'librarian':
+        return jsonify({"msg": "Ehhez a művelethez könyvtárosi jogosultság szükséges!"}), 403
+    # Kölcsönzés lekérése
+    loan = db.session.get(Loan, loan_id)
+
+    # Csak akkor hosszabbíthat, ha létezik és aktív
+    if not loan or not loan.is_active:
+        return jsonify({"msg": "Aktív kölcsönzés nem található ezen az azonosítón!"}), 404
+
+    # --- 1. ABSZOLÚT LIMIT: A 4. hosszabbítást a rendszer már nem engedi ---
+    if loan.extension_count >= 3:
+        return jsonify({
+            "msg": "Elérte a maximális hosszabbítások számát (3)! További hosszabbítás nem lehetséges."
+        }), 400
+
+    # --- 2. NAPOK SZÁMÁNAK KINYERÉSE (Alapból 14 nap, de a testreszabható) ---
+    data = request.get_json(silent=True) or {}
+    days_to_extend = data.get('days', 14)
+
+    # Biztonsági ellenőrzés: 1 és 100 nap között kell lennie
+    if type(days_to_extend) is not int or days_to_extend <= 0 or days_to_extend > 100:
+         return jsonify({"msg": "A hosszabbítás napjainak száma minimum 1, maximum 100 nap lehet!"}), 400
+
+    # --- 3. HOSSZABBÍTÁS VÉGREHAJTÁSA ---
+    loan.due_date += timedelta(days=days_to_extend)
+    loan.extension_count += 1
+    
+    db.session.commit()
+
+    return jsonify({
+        "msg": f"Kölcsönzés sikeresen meghosszabbítva a könyvtáros által {days_to_extend} nappal!",
+        "uj_hatarido": loan.due_date.strftime('%Y-%m-%d %H:%M'),
+        "hosszabbitasok_szama": loan.extension_count
+    }), 200

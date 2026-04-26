@@ -87,6 +87,7 @@ app.register_blueprint(user_bp)
 #Új felhasz regisztálása     
 #Könyv előjegyzése    
 #Kölcsönzési igény
+#felhasználó személyes profil lekérése
 #felhasználó személyes adat módosítása
 #Kölcsönzési idő hosszabbítás:
 #-Pénz feltöltése számlára-
@@ -106,7 +107,7 @@ app.register_blueprint(admin_bp)
 #----- KÖNYVTÁROS ------
 app.register_blueprint(librarian_bp)
 #kölcsönzési igény jóváhagyás
-# Várakozó könyv kölcsönzési igények
+#Várakozó könyv kölcsönzési igények
 #Könyv visszavétel:
 #Bírság kiszabása:
 

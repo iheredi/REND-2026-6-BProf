@@ -213,7 +213,7 @@ def request_loan():
     Kölcsönzési igény indítása egy konkrét példányra (Pending állapot).
     ---
     tags:
-      - Kölcsönzés
+      - Felhasználói műveletek
     security:
       - Bearer: []
     parameters:
@@ -276,9 +276,49 @@ def request_loan():
         "loan_id": new_loan.id
     }), 201
 
+#felhasználó személyes profil lekérése:
+@user_bp.route('/user/profile', methods=['GET'])
+@jwt_required()
+def get_profile():
+    """
+    Saját profiladatok lekérése.
+    ---
+    tags:
+      - Felhasználói műveletek
+    security:
+      - Bearer: []
+    responses:
+      200:
+        description: Profiladatok sikeresen lekérve.
+      404:
+        description: Felhasználó nem található.
+    """
+    current_user_id = get_jwt_identity()
+    user = db.session.get(User, current_user_id)
+    
+    if not user:
+        return jsonify({"msg": "Felhasználó nem található"}), 404
+        
+    address = db.session.get(Address, user.address_id)
+    
+    return jsonify({
+        "msg": "success",
+        "id": user.id,
+        "email": user.email,
+        "name": user.name,
+        "role": user.role_data.name if user.role_data else "user",
+        "phone": user.phone,
+        "balance": user.balance,
+        "address": {
+            "city": address.city if address else "",
+            "street": address.street if address else "",
+            "zip_code": address.zip_code if address else ""
+        }
+    }), 200
+
 
 #felhasználó személyes adat módosítása
-@user_bp.route('/user/update-profile', methods=['PUT'])
+@user_bp.route('/user/profile', methods=['POST'])
 @jwt_required()
 def update_profile():
     """
@@ -403,7 +443,7 @@ def add_balance():
     Egyenleg feltöltése a bejelentkezett felhasználó számára.
     ---
     tags:
-      - Pénzügyek
+      - Felhasználói műveletek
     security:
       - Bearer: []
     parameters:
@@ -458,7 +498,7 @@ def pay_debt(debt_id):
     Tartozás kifizetése az egyenlegből
     ---
     tags:
-      - Pénzügyek
+      - Felhasználói műveletek
     security:
       - Bearer: []
     parameters:
@@ -528,7 +568,7 @@ def get_books_with_item():
     Az összes könyv listázása a legelső elérhető példány azonosítójával.
     ---
     tags:
-      - Könyvkezelés
+      - Felhasználói műveletek
     responses:
       200:
         description: Könyvek listája az első elérhető példány ID-jával
