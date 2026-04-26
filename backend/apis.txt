@@ -15,13 +15,18 @@ user.py:
 Regisztrált/bejelentkezett felhasználó funkciók:
 
 -Könyv előjegyzése GET - kész
+-Könyv előjegyzése (Létrehozás) POST - kész
+-Előjegyzés törlése (lemondása) DELETE - kész
 -Kölcsönzési igény POST - kész
 -Kölcsönzési idő hosszabbítás POST - kész
 -Pénz feltöltése számlára POST - kész
+-Saját tartozások lekérése GET - kész
 -Tartozás kifizetése POST - kész
--Könyvek lekérdezése GET - kész
+-Könyvek lekérdezése GET - kész - okosítva,
+         hogy cím és szerző szerint is lehessen keresni
 -Lefoglalt könyvek és függőben lévő könyvek checkolása GET - kész
 -Foglalás törlése DELETE - kész
+-Könyv részleteinek megtekintése GET - kész
 
 -----------------------------------------------------------------
 libararian.py:
@@ -47,3 +52,17 @@ Admin funkciók:
 
 
 
+AI mondta:
+
+Hiányzó API végpontok a teljes értékű működéshez:
+Keresés (Közös): A GET /user/books végpontot fel kell okosítani, hogy fogadjon egy ?search=... paramétert az URL-ben, és ez alapján szűrjön a címre/szerzőre.
+
+Könyvtáros kölcsönöz az olvasónak: Egy POST /librarian/loans végpont, ami vár egy user_id-t és egy book_item_id-t, majd létrehozza az aktív kölcsönzést.
+
+Admin - Könyv szerkesztése: Egy PUT /admin/books/<book_id> végpont a cím, szerző és a kölcsönözhetőség (is_borrowable) módosítására.
+
+Admin - Könyv törlése: Egy DELETE /admin/books/<book_id> végpont. (Figyelni kell rá, hogy csak akkor lehessen törölni, ha nincsenek hozzá aktív kölcsönzések!)
+
+Admin - Példány állapotának módosítása: Egy PUT /admin/book-items/<item_id>/status végpont, ahol a státuszt át lehet állítani (pl. available, damaged, lost).
+
+Előjegyzés (Várólista): Egy dedikált POST /user/reservations végpont, ha a könyvből nincs elérhető példány.

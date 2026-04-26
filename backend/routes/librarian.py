@@ -83,8 +83,6 @@ def get_all_loans():
 
 
 
-
-
 #kölcsönzési igény jóváhagyás
 @librarian_bp.route('/librarian/approve-loan/', methods=['POST'])
 @jwt_required()

@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BiblioTár - Teljes Rendszer</title>
+    <style>
+        :root { --primary: #007bff; --success: #28a745; --danger: #dc3545; --warning: #ffc107; --info: #17a2b8; --dark: #343a40; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f9fa; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 1200px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1, h2, h3 { color: var(--dark); border-bottom: 2px solid #eee; padding-bottom: 5px; }
+        input, select { width: 100%; padding: 10px; margin: 5px 0 15px 0; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; }
+        button { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; color: white; font-weight: bold; margin-right: 5px; margin-bottom: 5px; transition: 0.2s;}
+        .btn-primary { background-color: var(--primary); } .btn-primary:hover { background-color: #0056b3; }
+        .btn-success { background-color: var(--success); } .btn-success:hover { background-color: #218838; }
+        .btn-danger { background-color: var(--danger); } .btn-danger:hover { background-color: #c82333; }
+        .btn-warning { background-color: var(--warning); color: black; }
+        .btn-info { background-color: var(--info); }
+        .hidden { display: none !important; }
+        .card { border: 1px solid #eee; padding: 15px; margin-bottom: 15px; border-radius: 5px; background: #fafafa; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .header-bar { display: flex; justify-content: space-between; align-items: center; background: var(--dark); color: white; padding: 10px 20px; border-radius: 5px; margin-bottom: 20px; }
+        .search-bar { display: flex; gap: 10px; margin-bottom: 15px; }
+        .badge { display: inline-block; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; color: white; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="auth-view">
+        <h1 style="text-align: center;">📚 BiblioTár Belépés</h1>
+        <div class="grid-2">
+            <div class="card">
+                <h2>Bejelentkezés</h2>
+                <input type="email" id="login-email" placeholder="Email" value="kiss.pista@freemail.hu">
+                <input type="password" id="login-password" placeholder="Jelszó" value="jelszo123">
+                <button class="btn-success" style="width: 100%;" onclick="login()">Belépés</button>
+            </div>
+            <div class="card">
+                <h2>Gyors Regisztráció</h2>
+                <input type="text" id="reg-name" placeholder="Név">
+                <input type="email" id="reg-email" placeholder="Email">
+                <input type="password" id="reg-password" placeholder="Jelszó">
+                <input type="text" id="reg-city" placeholder="Város">
+                <input type="text" id="reg-street" placeholder="Utca, házszám">
+                <input type="text" id="reg-zip" placeholder="Irányítószám">
+                <button class="btn-primary" style="width: 100%;" onclick="register()">Regisztráció</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="main-view" class="hidden">
+        <div class="header-bar">
+            <div>
+                <strong style="font-size: 20px;">📚 BiblioTár</strong> | 
+                <span id="user-greeting">Üdv!</span> (<span id="user-role-badge">Role</span>)
+            </div>
+            <button class="btn-danger" onclick="logout()">Kijelentkezés</button>
+        </div>
+
+        <div id="panel-profile" class="hidden card">
+            <h3>📝 Személyes Adatok & Beállítások</h3>
+            <div class="grid-2">
+                <div id="current-profile-info" style="font-size: 14px; color: #555; background: #fff; padding: 10px; border: 1px solid #ddd; border-radius: 4px;"></div>
+                <div>
+                    <input type="text" id="update-phone" placeholder="Új telefonszám">
+                    <div class="grid-2" style="gap: 10px;">
+                        <input type="text" id="update-zip" placeholder="Irsz.">
+                        <input type="text" id="update-city" placeholder="Város">
+                    </div>
+                    <input type="text" id="update-street" placeholder="Utca, házszám">
+                    <button class="btn-primary" onclick="updateProfile()">Adatok frissítése</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="panel-user" class="hidden">
+            <h2 style="color: var(--success);">Olvasói Felület</h2>
+            <div class="grid-2">
+                <div>
+                    <div class="card">
+                        <h3>🎒 Kölcsönzési előzmények & Aktív státusz</h3>
+                        <div id="user-loans-list"></div>
+                    </div>
+                    <div class="card">
+                        <h4>Bírságaim</h4>
+                        <div id="user-debts-list"></div>
+                    </div>
+                    <div class="card">
+                        <h3>⏳ Aktív Előjegyzéseim (Várólista)</h3>
+                        <div id="user-reservations-list">Betöltés...</div>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>📖 Könyvtár Katalógus (Keresés és Listázás)</h3>
+                    <div class="search-bar">
+                        <input type="text" id="user-search-input" placeholder="Keresés cím vagy szerző alapján...">
+                        <button class="btn-info" onclick="loadUserBooks(true)">Keresés</button>
+                        <button class="btn-primary" onclick="loadUserBooks()">Összes listázása</button>
+                    </div>
+                    <div id="user-books-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="panel-librarian" class="hidden">
+            <h2 style="color: var(--primary);">Könyvtárosi Felület</h2>
+            <div class="card">
+                <h3>📖 Katalógus Keresés</h3>
+                <div class="search-bar">
+                    <input type="text" id="lib-search-input" placeholder="Keresés cím vagy szerző alapján...">
+                    <button class="btn-info" onclick="loadLibrarianBooks()">Keresés</button>
+                </div>
+                <div id="lib-books-list">Nincs keresési eredmény.</div>
+            </div>
+            <div class="grid-2">
+                <div class="card">
+                    <h3>🤝 Kölcsönzés olvasó számára</h3>
+                    <input type="number" id="lib-borrow-user" placeholder="Olvasó ID-ja">
+                    <input type="number" id="lib-borrow-item" placeholder="Könyv példány (Item) ID-ja">
+                    <button class="btn-success" onclick="libBorrowForUser()">Kölcsönzés indítása</button>
+                </div>
+                <div class="card">
+                    <h3>🔙 Könyv Visszavétele</h3>
+                    <input type="text" id="return-barcode" placeholder="Vonalkód (pl. BC-123)">
+                    <button class="btn-warning" onclick="returnBook()">Visszavétel rögzítése</button>
+                </div>
+            </div>
+            <div class="grid-2">
+                <div class="card">
+                    <h3>📋 Kölcsönzések Kezelése (Hosszabbítások)</h3>
+                    <button class="btn-primary" onclick="loadAllLoans()">Lista Frissítése</button>
+                    <div id="lib-all-loans-list" style="margin-top: 10px;"></div>
+                </div>
+                <div class="card">
+                    <h3>💰 Bírságolás (Késés esetén)</h3>
+                    <input type="number" id="fine-user-id" placeholder="Olvasó ID">
+                    <input type="number" id="fine-amount" placeholder="Bírság összege (Ft)">
+                    <input type="text" id="fine-reason" placeholder="Indok (pl. Késés, Sérülés)">
+                    <button class="btn-danger" onclick="createDebt()">Bírság kiszabása</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="panel-admin" class="hidden">
+            <h2 style="color: var(--danger);">Adminisztrátori Felület</h2>
+            <div class="grid-2">
+                <div class="card">
+                    <h3>➕ Új Könyv rögzítése</h3>
+                    <input type="text" id="add-book-title" placeholder="Cím">
+                    <input type="text" id="add-book-author" placeholder="Szerző">
+                    <select id="add-book-borrowable">
+                        <option value="true">Kölcsönözhető</option>
+                        <option value="false">Nem kölcsönözhető</option>
+                    </select>
+                    <button class="btn-success" onclick="createBook()">Könyv hozzáadása</button>
+                </div>
+                <div class="card">
+                    <h3>📚 Példány (Item) hozzáadása</h3>
+                    <input type="number" id="add-item-bookid" placeholder="Melyik könyv ID-hoz?">
+                    <input type="number" id="add-item-count" placeholder="Hány darab?">
+                    <button class="btn-primary" onclick="addBookItems()">Példányok generálása</button>
+                </div>
+            </div>
+            <div class="grid-2">
+                <div class="card">
+                    <h3>✏️ Könyv módosítása / Törlése</h3>
+                    <input type="number" id="edit-book-id" placeholder="Könyv ID-ja">
+                    <input type="text" id="edit-book-title" placeholder="Új cím (Opcionális)">
+                    <select id="edit-book-borrowable">
+                        <option value="true">Kölcsönözhető legyen</option>
+                        <option value="false">Nem kölcsönözhető</option>
+                    </select>
+                    <button class="btn-warning" onclick="editBook()">Adatok módosítása</button>
+                    <button class="btn-danger" onclick="deleteBook()">Könyv törlése</button>
+                </div>
+                <div class="card">
+                    <h3>🛠️ Példány állapotának módosítása</h3>
+                    <input type="number" id="edit-item-id" placeholder="Példány (Item) ID">
+                    <select id="edit-item-status">
+                        <option value="available">Elérhető (Available)</option>
+                        <option value="damaged">Sérült (Damaged)</option>
+                        <option value="lost">Elveszett (Lost)</option>
+                    </select>
+                    <button class="btn-info" onclick="changeItemStatus()">Állapot frissítése</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_URL = "http://127.0.0.1:5000";
+
+    document.addEventListener("DOMContentLoaded", () => {
+        const token = localStorage.getItem("token");
+        const role = localStorage.getItem("role");
+        if (token && role) setupDashboard(role);
+    });
+
+    async function apiCall(endpoint, method = "GET", body = null) {
+        const token = localStorage.getItem("token");
+        const headers = { "Content-Type": "application/json" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        const options = { method, headers };
+        if (body) options.body = JSON.stringify(body);
+        
+        try {
+            const res = await fetch(API_URL + endpoint, options);
+            const data = await res.json();
+            return { ok: res.ok, status: res.status, data };
+        } catch (e) {
+            return { ok: false, data: { msg: "API Hiba vagy a szerver nem fut!" } };
+        }
+    }
+
+    async function login() {
+        const email = document.getElementById("login-email").value;
+        const password = document.getElementById("login-password").value;
+        const res = await apiCall("/login", "POST", { email, password });
+        if (res.ok) {
+            localStorage.setItem("token", res.data.access_token);
+            localStorage.setItem("role", res.data.role);
+            localStorage.setItem("email", res.data.user);
+            setupDashboard(res.data.role);
+        } else alert(res.data.msg);
+    }
+
+    function logout() { localStorage.clear(); location.reload(); }
+
+    async function register() {
+        const body = {
+            name: document.getElementById("reg-name").value,
+            email: document.getElementById("reg-email").value,
+            password: document.getElementById("reg-password").value,
+            city: document.getElementById("reg-city").value,
+            street: document.getElementById("reg-street").value,
+            zip_code: document.getElementById("reg-zip").value,
+            phone: "+3600000000"
+        };
+        const res = await apiCall("/register", "POST", body);
+        alert(res.data.msg);
+    }
+
+    async function setupDashboard(role) {
+        document.getElementById("auth-view").classList.add("hidden");
+        document.getElementById("main-view").classList.remove("hidden");
+        document.getElementById("user-greeting").innerText = localStorage.getItem("email");
+        document.getElementById("user-role-badge").innerText = role.toUpperCase();
+
+        document.getElementById("panel-profile").classList.remove("hidden");
+        loadProfileData();
+
+        if (role === "user") {
+            document.getElementById("panel-user").classList.remove("hidden");
+            refreshUserPanel(); 
+        } else if (role === "librarian") {
+            document.getElementById("panel-librarian").classList.remove("hidden");
+            loadAllLoans();
+        } else if (role === "admin") {
+            document.getElementById("panel-admin").classList.remove("hidden");
+        }
+    }
+
+    // ================= PROFIL (Közös) =================
+    async function loadProfileData() {
+        const res = await apiCall("/user/profile");
+        if(res.ok) {
+            if(document.getElementById("user-balance")) document.getElementById("user-balance").innerText = res.data.balance;
+            
+            // JAVÍTÁS: Most már kiírja az irányítószámot is a város előtt
+            document.getElementById("current-profile-info").innerHTML = `
+                <strong>Név:</strong> ${res.data.name}<br>
+                <strong>Email:</strong> ${res.data.email}<br>
+                <strong>Tel:</strong> ${res.data.phone || 'Nincs'}<br>
+                <strong>Cím:</strong> ${res.data.address.zip_code || ''} ${res.data.address.city || ''}, ${res.data.address.street || ''}`;
+            
+            // Beállítjuk az input mezőket is az aktuális értékekre
+            document.getElementById("update-phone").value = res.data.phone || "";
+            document.getElementById("update-zip").value = res.data.address.zip_code || "";
+            document.getElementById("update-city").value = res.data.address.city || "";
+            document.getElementById("update-street").value = res.data.address.street || "";
+        }
+    }
+
+    async function updateProfile() {
+        const body = {
+            phone: document.getElementById("update-phone").value,
+            zip_code: document.getElementById("update-zip").value,
+            city: document.getElementById("update-city").value,
+            street: document.getElementById("update-street").value
+        };
+        const res = await apiCall("/user/profile", "POST", body);
+        alert(res.data.msg); loadProfileData();
+    }
+
+    // ================= OLVASÓI FUNKCIÓK =================
+
+    async function refreshUserPanel() {
+        loadUserBooks();
+        loadUserLoans();
+        loadUserDebts();
+        loadUserReservations();
+    }
+
+    async function loadUserBooks(isSearch = false) {
+        let endpoint = "/user/books";
+        if (isSearch) {
+            const query = document.getElementById("user-search-input").value;
+            endpoint += `?search=${query}`;
+        }
+        
+        const res = await apiCall(endpoint);
+        if(!res.ok) { alert(res.data.msg); return; }
+
+        document.getElementById("user-books-list").innerHTML = res.data.map(b => {
+            let actionBtn = "";
+            if (b.user_specific_status === "Már nálad van" || b.user_specific_status === "Jóváhagyásra vár") {
+                actionBtn = `<button class='btn-info' disabled>${b.user_specific_status}</button>`;
+            } else if (!b.is_borrowable) {
+                actionBtn = `<span style='color: red; font-weight: bold; padding: 10px;'>Nem kölcsönözhető</span>`;
+            } else if (b.can_be_borrowed_now) {
+                actionBtn = `<button class='btn-success' onclick='requestLoan(${b.available_item_id})'>Kölcsönzés kérése</button>`;
+            } else {
+                actionBtn = `<button class='btn-warning' onclick='reserveBook(${b.book_id})'>Előjegyzés (Várólista)</button>`;
+            }
+            return `
+            <div class='card'>
+                <strong>${b.title}</strong> (Szerző: ${b.author})<br>
+                <div style="margin-top: 10px;">
+                    <button class='btn-primary' onclick='showBookDetails(${b.book_id})'>Részletek</button>
+                    ${actionBtn}
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    async function showBookDetails(id) {
+        const res = await apiCall(`/user/books/${id}`);
+        if(res.ok) {
+            alert(`📖 RÉSZLETES ADATOK:\n\nCím: ${res.data.title}\nSzerző: ${res.data.author}\nKölcsönözhető-e: ${res.data.is_borrowable ? 'Igen' : 'Nem'}\nÖsszes példány: ${res.data.total_copies} db\nEbből szabad: ${res.data.available_copies} db`);
+        } else { alert(res.data.msg); }
+    }
+    
+    async function requestLoan(id) { 
+        const res = await apiCall("/user/request-loan", "POST", {book_item_id: id}); 
+        alert(res.data.msg); refreshUserPanel();
+    }
+    
+    async function reserveBook(bookId) { 
+        const res = await apiCall("/user/reservations", "POST", {book_id: bookId});
+        alert(res.data.msg); refreshUserPanel();
+    }
+
+    async function loadUserLoans() {
+        const res = await apiCall("/user/loans");
+        if(!res.ok) return;
+        document.getElementById("user-loans-list").innerHTML = res.data.map(l => `
+            <div style='background:${l.is_active ? "#e8f5e9":"#eee"}; padding:10px; margin-bottom:5px; border-left: 5px solid ${l.is_active ? "green":"gray"}'>
+                <strong>${l.book_title}</strong><br>
+                Státusz: <strong>${l.status}</strong><br>
+                Hosszabbítva: ${l.extension_count || 0} / 2 alkalommal<br>
+                ${(l.is_active && (l.extension_count || 0) < 2) ? `<button class='btn-primary' style='margin-top:5px;' onclick='extendLoan(${l.loan_id})'>Hosszabbítás (+14 nap)</button>` : ''}
+                ${(l.status === 'Jóváhagyásra vár (Pending)') ? `<button class='btn-danger' style='margin-top:5px;' onclick='cancelLoanReq(${l.loan_id})'>Igény Törlése</button>` : ''}
+            </div>`).join('');
+    }
+    
+    async function extendLoan(id) { 
+        const res = await apiCall("/user/loan", "POST", {loan_id: id}); 
+        alert(res.data.msg); loadUserLoans(); 
+    }
+
+    async function cancelLoanReq(id) {
+        const res = await apiCall(`/user/loan/${id}`, "DELETE");
+        alert(res.data.msg); refreshUserPanel();
+    }
+
+    async function loadUserDebts() {
+        const res = await apiCall("/user/debts");
+        if(res.ok) document.getElementById("user-debts-list").innerHTML = res.data.length ? res.data.map(d => `<div style='color:red'>${d.amount} Ft - ${d.reason}</div>`).join('') : "Nincs bírság.";
+    }
+
+    async function loadUserReservations() {
+        const res = await apiCall("/user/reservations");
+        const list = document.getElementById("user-reservations-list");
+        if (!res.ok) { list.innerHTML = "<small style='color: red;'>Hiba a betöltéskor.</small>"; return; }
+        if (res.data.length === 0) { list.innerHTML = "<small>Nincs aktív előjegyzésed.</small>"; return; }
+        list.innerHTML = res.data.map(r => `
+            <div style="background: #f1f3f5; padding: 10px; margin-bottom: 5px; border-left: 5px solid var(--info); border-radius: 4px;">
+                <strong>${r.title}</strong><br>
+                <small>Igényelve: ${r.reserved_at}</small><br>
+                <button class="btn-danger" style="padding: 3px 8px; font-size: 11px; margin-top: 5px;" 
+                    onclick="cancelReservation(${r.reservation_id})">Visszavonás</button>
+            </div>`).join('');
+    }
+
+    async function cancelReservation(id) {
+        if(!confirm("Biztosan vissza szeretnéd vonni az előjegyzést?")) return;
+        const res = await apiCall(`/user/reservations/${id}`, "DELETE");
+        alert(res.data.msg); refreshUserPanel();
+    }
+
+    // ================= KÖNYVTÁROSI FUNKCIÓK =================
+    async function loadLibrarianBooks() { alert("API FIGYELMEZTETÉS: A könyvtáros keresőjéhez fel kell készíteni a könyv listázó API-t a ?search paraméterre!"); }
+    async function libBorrowForUser() { alert("API FIGYELMEZTETÉS: Ehhez hiányzik a POST /librarian/loans végpont!"); }
+    async function loadAllLoans() {
+        const res = await apiCall("/librarian/loans");
+        if(!res.ok) return;
+        document.getElementById("lib-all-loans-list").innerHTML = res.data.map(l => `
+            <div style='padding:5px; border-bottom:1px solid #ccc; background:${l.is_overdue?"#ffdada":"white"}'>
+                User ID: ${l.user_id} | Loan ID: ${l.loan_id} <br>
+                Határidő: ${l.due_date || 'Nincs'}<br>
+                <button class='btn-info' onclick='libExtendLoan(${l.loan_id})'>Könyvtárosi Hosszabbítás</button>
+            </div>`).join('');
+    }
+    async function libExtendLoan(id) { const res = await apiCall(`/librarian/extend-loan/${id}`, "POST"); alert(res.data.msg); loadAllLoans(); }
+    async function returnBook() { const barcode = document.getElementById("return-barcode").value; const res = await apiCall("/librarian/return-loan", "POST", {barcode}); alert(res.data.msg); loadAllLoans(); }
+    async function createDebt() {
+        const body = { user_id: parseInt(document.getElementById("fine-user-id").value), amount: parseFloat(document.getElementById("fine-amount").value), reason: document.getElementById("fine-reason").value };
+        const res = await apiCall("/librarian/debts", "POST", body); alert(res.data.msg);
+    }
+
+    // ================= ADMIN FUNKCIÓK =================
+    async function createBook() {
+        const body = { title: document.getElementById("add-book-title").value, author: document.getElementById("add-book-author").value, is_borrowable: document.getElementById("add-book-borrowable").value === "true" };
+        const res = await apiCall("/admin/books", "POST", body); alert(res.data.msg);
+    }
+    async function addBookItems() {
+        const body = { book_id: parseInt(document.getElementById("add-item-bookid").value), count: parseInt(document.getElementById("add-item-count").value) };
+        const res = await apiCall("/admin/book-items", "POST", body); alert(res.data.msg);
+    }
+    async function editBook() { alert("API FIGYELMEZTETÉS: Ehhez hiányzik a PUT /admin/books/<id> végpont!"); }
+    async function deleteBook() { alert("API FIGYELMEZTETÉS: Ehhez hiányzik a DELETE /admin/books/<id> végpont!"); }
+    async function changeItemStatus() { alert("API FIGYELMEZTETÉS: Ehhez hiányzik a PUT /admin/book-items/<id>/status végpont!"); }
+</script>
+</body>
+</html>

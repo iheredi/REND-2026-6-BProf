@@ -53,6 +53,62 @@ def get_my_reservations():
     return jsonify(result), 200
 
 
+# Könyv előjegyzése (Létrehozás)
+@user_bp.route('/user/reservations', methods=['POST'])
+@jwt_required()
+def create_reservation():
+    """
+    Új előjegyzés létrehozása egy könyvhöze, ha nincs elérhető példány.
+    """
+    current_user_id = get_jwt_identity()
+    data = request.get_json()
+    book_id = data.get('book_id')
+
+    # Ellenőrizzük, van-e egyáltalán szabad példány (mert akkor kölcsönözni kellene, nem előjegyezni)
+    available_item = BookItem.query.filter_by(book_id=book_id, status='available').first()
+    if available_item:
+        return jsonify({"msg": "Van elérhető példány, használd a kölcsönzés funkciót!"}), 400
+
+    # Ellenőrizzük, nincs-e már aktív előjegyzése erre a könyvre
+    existing_res = Reservation.query.filter_by(user_id=current_user_id, book_id=book_id, status='active').first()
+    if existing_res:
+        return jsonify({"msg": "Már van aktív előjegyzésed erre a könyvre!"}), 400
+
+    new_res = Reservation(
+        user_id=current_user_id,
+        book_id=book_id,
+        status='active'
+    )
+    db.session.add(new_res)
+    db.session.commit()
+
+    return jsonify({"msg": "Sikeres előjegyzés! Értesítünk, ha felszabadul egy példány."}), 201
+
+
+# Előjegyzés törlése (lemondása)
+@user_bp.route('/user/reservations/<int:res_id>', methods=['DELETE'])
+@jwt_required()
+def delete_reservation(res_id):
+    """
+    Saját aktív előjegyzés törlése/visszavonása.
+    """
+    current_user_id = get_jwt_identity()
+    
+    # Megkeressük az előjegyzést
+    res = db.session.get(Reservation, res_id)
+
+    if not res:
+        return jsonify({"msg": "Az előjegyzés nem található!"}), 404
+
+    # Ellenőrizzük a jogosultságot
+    if str(res.user_id) != str(current_user_id):
+        return jsonify({"msg": "Nincs jogosultságod más előjegyzését törölni!"}), 403
+
+    db.session.delete(res)
+    db.session.commit()
+
+    return jsonify({"msg": "Az előjegyzést sikeresen visszavontad."}), 200
+
 #Kölcsönzési igény
 @user_bp.route('/user/request-loan', methods=['POST'])
 @jwt_required()
@@ -237,6 +293,39 @@ def add_balance():
         "hozzaadott_osszeg": amount
     }), 200
 
+
+# Saját tartozások lekérése
+@user_bp.route('/user/debts', methods=['GET'])
+@jwt_required()
+def get_my_debts():
+    """
+    Saját kifizetetlen tartozások (bírságok) lekérése.
+    ---
+    tags:
+      - Felhasználói műveletek
+    security:
+      - Bearer: []
+    responses:
+      200:
+        description: A tartozások listája
+    """
+    current_user_id = get_jwt_identity()
+    
+    # Csak a kifizetetlen tartozásokat kérjük le
+    my_debts = Debt.query.filter_by(user_id=current_user_id, is_paid=False).all()
+    
+    result = []
+    for d in my_debts:
+        result.append({
+            "id": d.id,
+            "amount": d.amount,
+            "reason": d.reason,
+            "loan_id": d.loan_id,
+            "created_at": d.created_at.strftime('%Y-%m-%d %H:%M') if d.created_at else "Nincs adat"
+        })
+        
+    return jsonify(result), 200
+
 #Tartozás kifizetése
 @user_bp.route('/user/pay-debt/<int:debt_id>', methods=['POST'])
 @jwt_required()
@@ -307,7 +396,7 @@ def pay_debt(debt_id):
     }), 200
 
 
-#Könyvek lekérdezése
+#Könyvek lekérdezése - okosítva lehet keresni cím és szerző szerint
 @user_bp.route('/user/books', methods=['GET'])
 @jwt_required()
 def get_books_with_item():
@@ -322,20 +411,33 @@ def get_books_with_item():
     """
     current_user_id = get_jwt_identity()
     
-    # 1. Lekérjük a user összes aktív vagy pending kölcsönzését
+    # 1. Keresési kulcsszó kinyerése az URL-ből (?search=valami)
+    search_query = request.args.get('search', '').strip()
+    
+    # 2. Lekérjük a user összes aktív vagy pending kölcsönzését
     user_loans = Loan.query.filter(Loan.user_id == current_user_id).all()
     
-    # Készítünk egy szótárat: book_id -> loan_status (hogy könnyen keressünk)
     user_book_status = {}
     for loan in user_loans:
         item = db.session.get(BookItem, loan.book_item_id)
         if item:
-            # Ha is_active True, akkor már nála van, ha False, akkor még csak kérte (pending)
-            status_text = "Már nálad van" if loan.is_active else "Jóváhagyásra vár"
-            user_book_status[item.book_id] = status_text
+            # JAVÍTÁS: Csak az aktívakat és a tényleg függőben lévőket nézzük!
+            if loan.is_active:
+                user_book_status[item.book_id] = "Már nálad van"
+            elif not loan.is_active and item.status == 'reserved':
+                user_book_status[item.book_id] = "Jóváhagyásra vár"
+            # A régen visszahozott könyvekkel nem foglalkozunk, azokat újra ki lehet kérni!
 
-    # 2. Lekérjük az összes könyvet
-    books = Book.query.all()
+    # 3. Lekérjük a könyveket - ha van keresés, szűrünk!
+    query = Book.query
+    if search_query:
+        # Keresünk a címben VAGY a szerzőben (kis-nagybetű nem számít az ilike miatt)
+        query = query.filter(
+            (Book.title.ilike(f'%{search_query}%')) | 
+            (Book.author.ilike(f'%{search_query}%'))
+        )
+    
+    books = query.all()
     result = []
 
     for book in books:
@@ -345,11 +447,8 @@ def get_books_with_item():
             status='available'
         ).first()
 
-        # Meghatározzuk a könyv aktuális állapotát a user számára
         user_status = user_book_status.get(book.id, "Kölcsönözhető")
         
-        # Csak akkor engedjük a gombot, ha se nem pending, se nem borrowed a usernek, 
-        # ÉS van szabad példány, ÉS a könyv alapból kölcsönözhető
         is_actually_available = (
             book.id not in user_book_status and 
             first_available_item is not None and 
@@ -362,7 +461,7 @@ def get_books_with_item():
             "author": book.author,
             "is_borrowable": book.is_borrowable,
             "available_item_id": first_available_item.id if first_available_item else None,
-            "user_specific_status": user_status, # "Már nálad van", "Jóváhagyásra vár" vagy "Kölcsönözhető"
+            "user_specific_status": user_status,
             "can_be_borrowed_now": is_actually_available
         })
 
@@ -397,6 +496,16 @@ def get_my_loans():
 
     result = []
     for loan, item, book in my_loans:
+        
+        if loan.is_active:
+            status_text = "Kikölcsönözve (Aktív)"
+        else:
+            # Ha a loan is_active=False, és az item 'reserved', akkor még a könyvtárosra vár.
+            # Ha az item már 'available' (vagy más), akkor ez egy már visszahozott, régi kölcsönzés!
+            if item.status == 'reserved':
+                status_text = "Jóváhagyásra vár (Pending)"
+            else:
+                status_text = "Visszahozva (Előzmény)"
         result.append({
             "loan_id": loan.id,
             "book_title": book.title,
@@ -404,7 +513,7 @@ def get_my_loans():
             "barcode": item.barcode,
             "loan_date": loan.loan_date.strftime('%Y-%m-%d %H:%M') if loan.loan_date else "Függőben",
             "due_date": loan.due_date.strftime('%Y-%m-%d %H:%M') if loan.due_date else "Függőben",
-            "status": "Aktív" if loan.is_active else "Jóváhagyásra vár (Pending)",
+            "status": status_text,
             "is_active": loan.is_active
         })
 
@@ -464,3 +573,33 @@ def delete_loan_request(loan_id):
     db.session.commit()
 
     return jsonify({"msg": "A kölcsönzési kérelmet sikeresen törölted, a könyv újra szabad."}), 200
+
+
+# Egy konkrét könyv részletes adatai
+@user_bp.route('/user/books/<int:book_id>', methods=['GET'])
+@jwt_required()
+def get_book_details(book_id):
+    """
+    Egy konkrét könyv részletes adatainak megtekintése.
+    ---
+    tags:
+      - Felhasználói műveletek
+    security:
+      - Bearer: []
+    """
+    book = db.session.get(Book, book_id)
+    if not book:
+        return jsonify({"msg": "A könyv nem található!"}), 404
+
+    # Statisztika a példányokról
+    total_copies = book.copies.count()
+    available_copies = book.copies.filter_by(status='available').count()
+
+    return jsonify({
+        "book_id": book.id,
+        "title": book.title,
+        "author": book.author,
+        "is_borrowable": book.is_borrowable,
+        "total_copies": total_copies,
+        "available_copies": available_copies
+    }), 200
