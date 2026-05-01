@@ -129,8 +129,7 @@ def seed_data():
 
         # 8. ELŐJEGYZÉSEK (Várólista kezelése) 
         reservations = [
-            Reservation(user_id=u_olvaso2.id, book_id=books[1].id, status='active'), 
-            Reservation(user_id=u_olvaso1.id, book_id=books[2].id, status='active')  
+            Reservation(user_id=u_olvaso1.id, book_id=books[2].id, status='active'),
         ]
         db.session.add_all(reservations)
         db.session.commit()

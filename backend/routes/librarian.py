@@ -10,12 +10,68 @@ librarian_bp = Blueprint('librarian', __name__)
 
 
 #----- KÖNYVTÁROS ------
+# Könyvek listázása
+@librarian_bp.route('/librarian/books', methods=['GET'])
+@jwt_required()
+def get_all_books():
+  """
+  Az összes könyv listázása
+  ---
+  tags:
+    - Könyvtárosi műveletek
+  responses:
+    200:
+      description: Könyvek listája az első elérhető példány ID-jával
+  """
+  current_user_id = get_jwt_identity()
+  staff = db.session.get(User, current_user_id)
+  if not staff or not staff.role_data or staff.role_data.name not in ['librarian', 'admin']:
+    return jsonify({"msg": "Ehhez a művelethez könyvtárosi jogosultság szükséges!"}), 403
+
+  search_query = request.args.get('search', '').strip()
+  query = Book.query
+  if search_query:
+    # Keresünk a címben VAGY a szerzőben (kis-nagybetű nem számít az ilike miatt)
+    query = query.filter(
+        (Book.title.ilike(f'%{search_query}%')) | 
+        (Book.author.ilike(f'%{search_query}%'))
+    )    
+  books = query.all()
+  result = []
+  for book in books:
+
+    # összes példány
+    total_items = BookItem.query.filter_by(book_id=book.id).all()
+
+    # elérhető példányok
+    available_items = [
+        item for item in total_items if item.status == 'available'
+    ]
+
+    result.append({
+        "book_id": book.id,
+        "title": book.title,
+        "author": book.author,
+        "is_borrowable": book.is_borrowable,
+
+        # inventory info
+        "total_copies": len(total_items),
+        "available_copies": len(available_items),
+
+        # konkrét művelethez kell
+        "first_available_item_id": available_items[0].id if available_items else None
+    })
+  return jsonify(result), 200
+
+
+
+
 # Összes kölcsönzés listázása (Könyvtáros)
 @librarian_bp.route('/librarian/loans', methods=['GET'])
 @jwt_required()
-def get_all_loans():
+def get_all_non_pending_loans():
     """
-    Az összes kölcsönzés kilistázása a könyvtáros számára.
+    Az összes nem pending kölcsönzés kilistázása a könyvtáros számára.
     Kiszámolja a késést (is_overdue) is!
     ---
     tags:
@@ -47,12 +103,14 @@ def get_all_loans():
     # Alap lekérdezés: minden kölcsönzés
     query = Loan.query
 
-    if status_filter == 'active':
-        query = query.filter_by(is_active=True)
-    elif status_filter == 'pending':
-        query = query.filter_by(is_active=False)
+    # if status_filter == 'active':
+    #     query = query.filter_by(is_active=True)
+    # elif status_filter == 'pending':
+    #     query = query.filter_by(is_active=False)
 
-    loans = query.all()
+    # loans = query.all()
+    # csak azokat listázzuk, amik aktívak. pendingek masik boxban
+    loans = query.filter_by(is_active=True)
     
     # Adatok formázása és a késés kiszámítása a frontend számára
     result = []
@@ -68,10 +126,15 @@ def get_all_loans():
             delta = now - loan.due_date
             days_overdue = delta.days # Kiszámoljuk, hány napja késik
 
+        book_item = db.session.get(BookItem, loan.book_item_id)
+        book = db.session.get(Book, book_item.book_id)
         result.append({
             "loan_id": loan.id,
             "user_id": loan.user_id,
+            "user_name": loan.user.name,
             "book_item_id": loan.book_item_id,
+            "book_barcode": book_item.barcode,
+            "book_cim": book.title,
             "is_active": loan.is_active,
             "extension_count": loan.extension_count,
             "due_date": loan.due_date.strftime('%Y-%m-%d %H:%M') if loan.due_date else None,
@@ -82,9 +145,93 @@ def get_all_loans():
     return jsonify(result), 200
 
 
+# kézi kölcsönzés könyvtáros által
+@librarian_bp.route('/librarian/create-loan', methods=['POST'])
+@jwt_required()
+def librarian_create_loan():
+    """
+    Könyvtáros által manuális kölcsönzés létrehozása (user + book_item).
+    ---
+    tags:
+      - Könyvtárosi műveletek
+    security:
+      - Bearer: []
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            user_id:
+              type: integer
+              example: 3
+            book_item_id:
+              type: integer
+              example: 15
+    responses:
+      200:
+        description: Sikeres kölcsönzés létrehozva
+      400:
+        description: Hibás adat vagy nem elérhető példány
+      403:
+        description: Nincs jogosultság
+      404:
+        description: Felhasználó vagy könyvpéldány nem található
+    """
+
+    current_user_id = get_jwt_identity()
+    staff = db.session.get(User, current_user_id)
+
+    # jogosultság
+    if not staff or not staff.role_data or staff.role_data.name != 'librarian':
+        return jsonify({"msg": "Ehhez a művelethez könyvtáros jogosultság szükséges!"}), 403
+
+    data = request.get_json()
+    user_id = data.get("user_id")
+    book_item_id = data.get("book_item_id")
+
+    if not user_id or not book_item_id:
+        return jsonify({"msg": "Hiányzó user_id vagy book_item_id!"}), 400
+
+    user = db.session.get(User, user_id)
+    item = db.session.get(BookItem, book_item_id)
+
+    if not user:
+        return jsonify({"msg": "Felhasználó nem található!"}), 404
+
+    if not item:
+        return jsonify({"msg": "Könyvpéldány nem található!"}), 404
+
+    if item.status != "available":
+        return jsonify({"msg": "Ez a példány nem elérhető!"}), 400
+
+    # ACTIVE LOAN létrehozás
+    new_loan = Loan(
+        user_id=user_id,
+        book_item_id=book_item_id,
+        is_active=True,
+        loan_date=datetime.utcnow(),
+        due_date=datetime.utcnow() + timedelta(days=14),
+        extension_count=0
+    )
+
+    # státusz frissítés
+    item.status = "borrowed"
+
+    db.session.add(new_loan)
+    db.session.commit()
+
+    return jsonify({
+        "msg": "Kölcsönzés sikeresen létrehozva!",
+        "loan_id": new_loan.id,
+        "user": user.name,
+        "barcode": item.barcode,
+        "due_date": new_loan.due_date.strftime('%Y-%m-%d %H:%M')
+    }), 200
 
 #kölcsönzési igény jóváhagyás
-@librarian_bp.route('/librarian/approve-loan/', methods=['POST'])
+@librarian_bp.route('/librarian/approve-loan/<int:loan_id>', methods=['POST'])
 @jwt_required()
 def approve_loan(loan_id):
     """
@@ -128,9 +275,12 @@ def approve_loan(loan_id):
     loan.due_date = datetime.utcnow() + timedelta(days=14) # 2 hét határidő
     
     # A könyv példányának státuszát 'borrowed' lesz
-    item = db.session.get(BookItem, loan.book_item_id)
+    item = db.session.get(BookItem, loan.book_item_id)          
+    
     if item:
-        item.status = 'borrowed'
+      item.status = 'borrowed'
+    else:
+      return jsonify({"msg": "BookItem nem található!"}), 404
 
     db.session.commit()
 
@@ -140,6 +290,62 @@ def approve_loan(loan_id):
         "uj_hatarido": loan.due_date.strftime('%Y-%m-%d %H:%M'),
         "konyv_peldany": item.barcode if item else "Ismeretlen"
     }), 200
+
+
+
+# kölcsönzési igény törlése
+@librarian_bp.route('/librarian/delete-loan/<int:loan_id>', methods=['DELETE'])
+@jwt_required()
+def delete_loan(loan_id):
+    """
+    Kölcsönzési igény törlése (Csak könyvtáros/admin).
+    ---
+    tags:
+      - Könyvtárosi műveletek
+    security:
+      - Bearer: []
+    parameters:
+      - name: loan_id
+        in: path
+        type: integer
+        required: true
+        description: A törlendő kölcsönzés (Loan) azonosítója
+    responses:
+      200:
+        description: Kölcsönzési igény sikeresen törölve
+      403:
+        description: Nincs jogosultságod a művelethez
+      404:
+        description: A kölcsönzési igény nem található vagy nem törölhető (pl. már aktív)
+    """
+    current_user_id = get_jwt_identity()
+    staff = db.session.get(User, current_user_id)
+
+    if not staff or not staff.role_data or staff.role_data.name not in ['librarian', 'admin']:
+        return jsonify({"msg": "Ehhez a művelethez könyvtárosi jogosultság szükséges!"}), 403
+
+    loan = db.session.get(Loan, loan_id)
+
+    # csak pendinget lehessen törölni
+    if not loan or loan.is_active:
+        return jsonify({"msg": "Csak függőben lévő (pending) igény törölhető!"}), 404
+
+    item = db.session.get(BookItem, loan.book_item_id)
+
+    # ha esetleg lefoglalt státusz volt
+    if item and item.status != 'available':
+        item.status = 'available'
+
+    db.session.delete(loan)
+    db.session.commit()
+
+    return jsonify({
+        "msg": "Kölcsönzési igény törölve!",
+        "loan_id": loan_id
+    }), 200
+    
+  
+
 # Várakozó könyv kölcsönzési igények
 @librarian_bp.route('/librarian/pending-loans', methods=['GET'])
 @jwt_required()
@@ -179,6 +385,7 @@ def get_pending_loans():
             "user_name": user_info.name if user_info else "Ismeretlen",
             "user_email": user_info.email if user_info else "",
             "book_title": book_info.title if book_info else "Ismeretlen",
+            "book_item_id": item_info.id if item_info else "",
             "barcode": item_info.barcode if item_info else "Nincs",
             "request_date": loan.loan_date.strftime('%Y-%m-%d %H:%M') if loan.loan_date else "Nincs adat"
         })
@@ -243,9 +450,12 @@ def return_loan():
     # 4. Lezárjuk a kölcsönzést és felszabadítjuk a fizikai példányt
     loan.is_active = False
     item.status = 'available'
-    
+
     # Kikeressük a könyv címét a válaszüzenethez
     book = db.session.get(Book, item.book_id)
+    
+    # -- es ki is töröljük a loan táblából, mert különben továbbra is jóváhagyásra fog várni
+    db.session.delete(loan)
     
     db.session.commit()
 
