@@ -38,13 +38,26 @@ def delete_book(book_id):
         return jsonify({"msg": "A könyv nem található!"}), 404
 
     # Van-e kölcsönzés alatt álló példány?
-    active_loans = Loan.query.join(BookItem).filter(
-        BookItem.book_id == book_id,
-        Loan.is_active == True
-    ).first()
-
+    #active_loans = Loan.query.join(BookItem).filter(
+    #    BookItem.book_id == book_id,
+    #    Loan.is_active == True
+    #).first() 
+    active_loans = db.session.query(
+        db.session.query(Loan).filter(
+            Loan.is_active == True,
+            Loan.book_item_id.in_(
+                db.session.query(BookItem.id).filter_by(book_id=book_id)
+            )
+        ).exists()
+    ).scalar()
     if active_loans:
-        return jsonify({"msg": "A könyv nem törölhető, mert van kölcsönzés alatt álló példánya!"}), 400
+        return jsonify({"msg":"A könyv nem törölhető, mert van kölcsönzés alatt álló példánya!"}), 400
+
+    res_exists = db.session.query(
+      db.session.query(Reservation).filter_by(book_id=book_id).exists()
+    ).scalar()
+    if res_exists:
+        return jsonify({"msg":"A könyv nem törölhető, mert vannak foglalások."}), 400
 
     # Töröljük a példányokat
     BookItem.query.filter_by(book_id=book_id).delete()
@@ -182,3 +195,125 @@ def add_book_items():
         "msg": f"{count} példány sikeresen hozzáadva!",
         "barcodes": created_items
     }), 201
+
+
+# Könyv adatainak módosítása
+@admin_bp.route('/admin/books/<int:book_id>', methods=['PUT'])
+@jwt_required()
+def update_book(book_id):
+    """
+    Könyv adatainak módosítása (Csak Admin)
+    ---
+    tags:
+      - Admin műveletek
+    security:
+      - Bearer: []
+    parameters:
+      - name: book_id
+        in: path
+        type: integer
+        required: true
+        description: A módosítandó könyv azonosítója
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            title:
+              type: string
+              example: "Új könyvcím"
+            is_borrowable:
+              type: boolean
+              example: true
+    responses:
+      200:
+        description: Könyv sikeresen frissítve
+      403:
+        description: Nincs admin jogosultság
+      404:
+        description: A könyv nem található
+      400:
+        description: Hibás adatok
+    """
+    claims = get_jwt()
+    if claims.get('role') != 'admin':
+        return jsonify({"msg": "Csak admin módosíthat könyvet!"}), 403
+
+    book = db.session.get(Book, book_id)
+    if not book:
+        return jsonify({"msg": "A könyv nem található!"}), 404
+
+    data = request.get_json() or {}
+    title = data.get('title')
+    is_borrowable = data.get('is_borrowable')
+
+    if title is not None:
+        if not title.strip():
+            return jsonify({"msg": "A könyv címe nem lehet üres!"}), 400
+        book.title = title.strip()
+
+    if is_borrowable is not None:
+        book.is_borrowable = bool(is_borrowable)
+
+    if title is None and is_borrowable is None:
+        return jsonify({"msg": "Nem adtál meg módosítandó mezőt!"}), 400
+
+    db.session.commit()
+
+    return jsonify({"msg": "Könyv adatai sikeresen frissítve!", "book_id": book.id}), 200
+
+
+# Könyvpéldány státuszának módosítása
+@admin_bp.route('/admin/book-items/<int:item_id>/status', methods=['PUT'])
+@jwt_required()
+def update_book_item_status(item_id):
+    """
+    Könyvpéldány státuszának módosítása (Csak Admin)
+    ---
+    tags:
+      - Admin műveletek
+    security:
+      - Bearer: []
+    parameters:
+      - name: item_id
+        in: path
+        type: integer
+        required: true
+        description: A módosítandó példány azonosítója
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: "available"
+    responses:
+      200:
+        description: Státusz frissítve
+      403:
+        description: Nincs admin jogosultság
+      404:
+        description: A példány nem található
+      400:
+        description: Hibás státusz
+    """
+    claims = get_jwt()
+    if claims.get('role') != 'admin':
+        return jsonify({"msg": "Csak admin módosíthat példány státuszt!"}), 403
+
+    data = request.get_json() or {}
+    status = data.get('status')
+    if not status or status not in ('available', 'damaged', 'lost'):
+        return jsonify({"msg": "Érvénytelen státusz. Használd: available, damaged, lost."}), 400
+
+    book_item = db.session.get(BookItem, item_id)
+    if not book_item:
+        return jsonify({"msg": "A példány nem található!"}), 404
+
+    book_item.status = status
+    db.session.commit()
+
+    return jsonify({"msg": "A könyvpéldány státusza frissítve lett.", "status": book_item.status}), 200

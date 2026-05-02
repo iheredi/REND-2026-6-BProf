@@ -427,14 +427,50 @@ async function addBookItems() {
 
 
 async function createBook() {
-    const body = { title: document.getElementById("add-book-title").value, author: document.getElementById("add-book-author").value, is_borrowable: document.getElementById("add-book-borrowable").value === "true" };
-    const res = await apiCall("/admin/books", "POST", body); alert(res.data.msg);
+    const body = {
+        title: document.getElementById("add-book-title").value,
+        author: document.getElementById("add-book-author").value,
+        is_borrowable: document.getElementById("add-book-borrowable").value === "true"
+    };
+    const res = await apiCall("/admin/books", "POST", body);
+    alert(res.data.msg);
 }
-async function addBookItems() {
-    const body = { book_id: parseInt(document.getElementById("add-item-bookid").value), count: parseInt(document.getElementById("add-item-count").value) };
-    const res = await apiCall("/admin/book-items", "POST", body); alert(res.data.msg);
+async function editBook() {
+    const bookId = parseInt(document.getElementById("edit-book-id").value);
+    const title = document.getElementById("edit-book-title").value;
+    const isBorrowable = document.getElementById("edit-book-borrowable").value === "true";
+
+    if (!bookId) {
+        alert("Add meg a könyv ID-ját!");
+        return;
+    }
+
+    const body = {};
+    if (title.trim()) body.title = title.trim();
+    body.is_borrowable = isBorrowable;
+
+    const res = await apiCall(`/admin/books/${bookId}`, "PUT", body);
+    if (res.ok) {
+        alert(res.data.msg);
+    } else {
+        alert(res.data.msg || "Nem sikerült frissíteni a könyvet.");
+    }
 }
-async function editBook() { alert("API FIGYELMEZTETÉS: Ehhez hiányzik a PUT /admin/books/<id> végpont!"); }
 //async function deleteBook() { alert("API FIGYELMEZTETÉS: Ehhez hiányzik a DELETE /admin/books/<id> végpont!"); }
-async function changeItemStatus() { alert("API FIGYELMEZTETÉS: Ehhez hiányzik a PUT /admin/book-items/<id>/status végpont!"); }
+async function changeItemStatus() {
+    const itemId = parseInt(document.getElementById("edit-item-id").value);
+    const status = document.getElementById("edit-item-status").value;
+
+    if (!itemId) {
+        alert("Add meg a példány ID-ját!");
+        return;
+    }
+
+    const res = await apiCall(`/admin/book-items/${itemId}/status`, "PUT", { status });
+    if (res.ok) {
+        alert(res.data.msg);
+    } else {
+        alert(res.data.msg || "Nem sikerült frissíteni a példány állapotát.");
+    }
+}
 
