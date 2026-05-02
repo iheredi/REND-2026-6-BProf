@@ -1,8 +1,20 @@
 const API_URL = "http://127.0.0.1:5000";
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
     const token = localStorage.getItem("token");
     const role = localStorage.getItem("role");
+
+    if (!token) {        
+        return;
+    }
+
+    const res = await apiCall("/me", "GET");
+
+    if (!res.ok) {
+        logout(); // token hibás / lejárt
+        return;
+    }
+
     if (token && role) setupDashboard(role);
 });
 
@@ -426,21 +438,3 @@ async function editBook() { alert("API FIGYELMEZTETÉS: Ehhez hiányzik a PUT /a
 //async function deleteBook() { alert("API FIGYELMEZTETÉS: Ehhez hiányzik a DELETE /admin/books/<id> végpont!"); }
 async function changeItemStatus() { alert("API FIGYELMEZTETÉS: Ehhez hiányzik a PUT /admin/book-items/<id>/status végpont!"); }
 
-//token ellenorzese minden oldalbetolteskor
-document.addEventListener("DOMContentLoaded", async () => {
-    const token = localStorage.getItem("token");
-    const role = localStorage.getItem("role");
-
-    if (!token) {        
-        return;
-    }
-
-    const res = await apiCall("/me", "GET");
-
-    if (!res.ok) {
-        logout(); // token hibás / lejárt
-        return;
-    }
-
-    setupDashboard(role);
-});
