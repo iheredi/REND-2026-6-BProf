@@ -431,8 +431,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const token = localStorage.getItem("token");
     const role = localStorage.getItem("role");
 
-    if (!token) {
-        logout();
+    if (!token) {        
         return;
     }
 
