@@ -65,7 +65,6 @@ def get_all_books():
 
 
 
-
 # Összes kölcsönzés listázása (Könyvtáros)
 @librarian_bp.route('/librarian/loans', methods=['GET'])
 @jwt_required()

@@ -179,9 +179,16 @@ async function loadUserBooks(isSearch = false) {
 
 async function showBookDetails(id) {
     const res = await apiCall(`/user/books/${id}`);
-    if (res.ok) {
-        alert(`📖 RÉSZLETES ADATOK:\n\nCím: ${res.data.title}\nSzerző: ${res.data.author}\nKölcsönözhető-e: ${res.data.is_borrowable ? 'Igen' : 'Nem'}\nÖsszes példány: ${res.data.total_copies} db\nEbből szabad: ${res.data.available_copies} db`);
-    } else { alert(res.data.msg); }
+    if (!res.ok) {
+        alert(res.data.msg);
+        return;
+    }
+
+    const itemLines = (res.data.items || []).map(item =>
+        `• Item ID: ${item.item_id} | Barcode: ${item.barcode} | Státusz: ${item.status}`
+    ).join("\n");
+
+    alert(`📖 RÉSZLETES ADATOK:\n\nCím: ${res.data.title}\nSzerző: ${res.data.author}\nKölcsönözhető-e: ${res.data.is_borrowable ? 'Igen' : 'Nem'}\nÖsszes példány: ${res.data.total_copies} db\nEbből szabad: ${res.data.available_copies} db\n\nPéldányok:\n${itemLines || 'Nincs példány.'}`);
 }
 
 async function requestLoan(id) {

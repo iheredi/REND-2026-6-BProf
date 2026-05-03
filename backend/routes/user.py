@@ -606,6 +606,14 @@ def get_book_details(book_id):
     # Statisztika a példányokról
     total_copies = book.copies.count()
     available_copies = book.copies.filter_by(status='available').count()
+    items = [
+        {
+            "item_id": item.id,
+            "barcode": item.barcode,
+            "status": item.status
+        }
+        for item in book.copies.order_by(BookItem.id).all()
+    ]
 
     return jsonify({
         "book_id": book.id,
@@ -613,5 +621,6 @@ def get_book_details(book_id):
         "author": book.author,
         "is_borrowable": book.is_borrowable,
         "total_copies": total_copies,
-        "available_copies": available_copies
+        "available_copies": available_copies,
+        "items": items
     }), 200
