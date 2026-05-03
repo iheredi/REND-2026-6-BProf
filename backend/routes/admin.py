@@ -317,3 +317,56 @@ def update_book_item_status(item_id):
     db.session.commit()
 
     return jsonify({"msg": "A könyvpéldány státusza frissítve lett.", "status": book_item.status}), 200
+
+# Könyvek listázása
+@admin_bp.route('/admin/books', methods=['GET'])
+@jwt_required()
+def get_all_books():
+  """
+  Az összes könyv listázása
+  ---
+  tags:
+    - Könyvtárosi műveletek
+  responses:
+    200:
+      description: Könyvek listája az első elérhető példány ID-jával
+  """
+  current_user_id = get_jwt_identity()
+  staff = db.session.get(User, current_user_id)
+  if not staff or not staff.role_data or staff.role_data.name not in ['librarian', 'admin']:
+    return jsonify({"msg": "Ehhez a művelethez könyvtárosi jogosultság szükséges!"}), 403
+
+  search_query = request.args.get('search', '').strip()
+  query = Book.query
+  if search_query:
+    # Keresünk a címben VAGY a szerzőben (kis-nagybetű nem számít az ilike miatt)
+    query = query.filter(
+        (Book.title.ilike(f'%{search_query}%')) | 
+        (Book.author.ilike(f'%{search_query}%'))
+    )    
+  books = query.all()
+  result = []
+  for book in books:
+
+    # összes példány
+    total_items = BookItem.query.filter_by(book_id=book.id).all()
+
+    # elérhető példányok
+    available_items = [
+        item for item in total_items if item.status == 'available'
+    ]
+
+    result.append({
+        "book_id": book.id,
+        "title": book.title,
+        "author": book.author,
+        "is_borrowable": book.is_borrowable,
+
+        # inventory info
+        "total_copies": len(total_items),
+        "available_copies": len(available_items),
+
+        # konkrét művelethez kell
+        "first_available_item_id": available_items[0].id if available_items else None
+    })
+  return jsonify(result), 200

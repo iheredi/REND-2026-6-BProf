@@ -474,3 +474,43 @@ async function changeItemStatus() {
     }
 }
 
+async function loadAdminBooks() {
+    const query = document.getElementById("adm-search-input").value;
+
+    let endpoint = "/admin/books";
+    if (query) {
+        endpoint += `?search=${encodeURIComponent(query)}`;
+    }
+
+    const res = await apiCall(endpoint);
+
+    if (!res.ok) {
+        alert(res.data.msg || "Hiba történt a könyvek betöltésekor!");
+        return;
+    }
+
+    const list = document.getElementById("adm-books-list");
+
+    if (!res.data.length) {
+        list.innerHTML = "<small>Nincs találat.</small>";
+        return;
+    }
+
+    list.innerHTML = res.data.map(b => `
+        <div class="card">
+            <strong>${b.title}</strong> (Szerző: ${b.author}) (id: ${b.book_id})<br>
+
+            <div style="margin-top: 8px;">
+                📦 Összes példány: <b>${b.total_copies}</b><br>
+                ✅ Elérhető: <b style="color: green;">${b.available_copies}</b><br>
+            </div>
+
+            <div style="margin-top: 10px;">      
+
+                <button class="btn-primary" onclick="showBookDetails(${b.book_id})">
+                    Részletek
+                </button>
+            </div>
+        </div>
+    `).join('');
+}

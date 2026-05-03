@@ -167,6 +167,16 @@
                         <button class="btn-primary" onclick="addBookItems()">Példányok generálása</button>
                     </div>
                 </div>
+                <div class="grid-2"></div>
+                    <div class="card">
+                        <h3>📖 Könyv Keresés</h3>
+                        <div class="search-bar">
+                            <input type="text" id="adm-search-input" placeholder="Keresés cím vagy szerző alapján...">
+                            <button class="btn-info" onclick="loadAdminBooks()">Keresés</button>
+                        </div>
+                        <div id="adm-books-list">Nincs keresési eredmény.</div>
+                    </div>
+                </div>    
                 <div class="grid-2">
                     <div class="card">
                         <h3>✏️ Könyv módosítása / Törlése</h3>
