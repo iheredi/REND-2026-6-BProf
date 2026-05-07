@@ -526,7 +526,8 @@ def get_my_loans():
             "due_date": loan.due_date.strftime('%Y-%m-%d %H:%M') if loan.due_date else "Függőben",
             "status": status_text,
             "is_active": loan.is_active,
-            "days_remaining": days_left_text
+            "days_remaining": days_left_text,
+            "extension_count": loan.extension_count
         })
 
     return jsonify(result), 200

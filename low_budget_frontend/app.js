@@ -204,7 +204,6 @@ async function reserveBook(bookId) {
 async function loadUserLoans() {
     const res = await apiCall("/user/loans");
     if (!res.ok) return;
-   
     document.getElementById("user-loans-list").innerHTML = res.data.map(l => `
             <div style='background:${l.is_active ? "#e8f5e9" : "#eee"}; padding:10px; margin-bottom:5px; border-left: 5px solid ${l.is_active ? "green" : "gray"}'>
                 Vonalkód: <strong>${l.barcode}</strong><br/>

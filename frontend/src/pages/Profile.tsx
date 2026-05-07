@@ -13,11 +13,11 @@ export default function Profile() {
                     Csak sikeres login után érhető el.
                 </h3>
                 <p>
-                    ID: {user.id}
+                    ID: {user?.id}
                     <br />
-                    Név: {user.name}
+                    Név: {user?.name}
                     <br/>
-                    Email: {user.email}
+                    Email: {user?.email}
                     <br/>
                 </p>
                 <p>
