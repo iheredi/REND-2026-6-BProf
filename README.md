@@ -29,3 +29,5 @@ cd frontend/dist
 python3 -m http.server
 ```
 ez elindít egy python webserver a tcp 8000 -es porton. A frontend a http://127.0.0.1:8000 -en érhető el.
+
+Megjegyzés: a low budget frontend használható teljes funkcionalitással. Ez statikus html + js + css, nem igényel külön szervert.
