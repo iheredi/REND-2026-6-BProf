@@ -23,7 +23,7 @@ cd backend
 python3 app.py
 ```
 
-### Frontend indítása (view only mode - fejelsztéshez lásd frontend/Readme.md)
+### React frontend indítása (view only mode - fejelsztéshez lásd frontend/Readme.md)
 ```js
 cd frontend/dist
 python3 -m http.server
